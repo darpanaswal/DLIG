@@ -1,263 +1,148 @@
+"""
+Main script for running DLIG attribution analysis.
+"""
+
 import gc
-import os
-import csv
-import json
 import torch
-import traceback
-from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer
-
-# del model
-# del tokenizer
-# gc.collect()
-# torch.cuda.empty_cache()
-# torch.cuda.ipc_collect()
+from models.model_manager import ModelManager, GradientEnabledModel
+from attribution.dlig_attribution import DLIGAttribution
+from attribution.hook_manager import HookManager
+from utils.data_processor import DataProcessor
+from config import LAYER_NAME, MAX_NEW_TOKENS, GENERATION_STEPS
 
 
-model_path = "Dream-org/Dream-v0-Instruct-7B"
+def main(target_output=None):
+    """Main function to run DLIG attribution analysis."""
+    # Initialize components
+    model_manager = ModelManager()
+    model, tokenizer = model_manager.load_model_and_tokenizer()
+    
+    # Initialize hook manager
+    hook_manager = HookManager(model)
+    hook_manager.register_hooks()
 
-tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-model = AutoModel.from_pretrained(model_path, torch_dtype=torch.bfloat16, device_map="auto", trust_remote_code=True).eval()
-
-layer_name = 'model.embed_tokens'  # or any Transformer layer like 'model.layers.10'
-target_layer = dict()
-
-def capture_activations(module, inp, out):
-    out = out if isinstance(out, torch.Tensor) else out[0]
-    if not out.requires_grad:
-        out.requires_grad_()
-    out.retain_grad()
-    target_layer['output'] = out
-    print(f"[DEBUG] Hooked layer output shape: {out.shape if isinstance(out, torch.Tensor) else type(out)}")
-
-hooked_layer = eval(f"model.{layer_name}")
-hook_handle = hooked_layer.register_forward_hook(capture_activations)
-
-dlig_scores = []
-original_input_length = None
-integration_steps = 20  # Number of integration steps (m in the formula)
-
-def create_baseline_input(x_t, mask_token_id, original_length):
-    baseline = x_t.clone()
-    # Mask all original tokens, creating meaningful differences.
-    baseline[:, :original_length] = mask_token_id
-    return baseline
-
-def compute_dlig_at_timestep(step, x_t, logits, mask_token_id, original_length, attention_mask):
-    print(f"[DLIG DEBUG] step={step} x_t.shape={x_t.shape} attention_mask.shape={attention_mask.shape}")
+    # Initialize DLIG attribution
+    dlig_attribution = DLIGAttribution(model, tokenizer, hook_manager)
+    
+    # CRITICAL: Ensure we have a valid token for NULL condition
+    if tokenizer.mask_token_id is None and tokenizer.pad_token_id is None:
+        # Fallback if tokenizer configuration is poor
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+    
+    
+    # Initialize data processor
+    data_processor = DataProcessor(tokenizer)
+    
     try:
-        if attention_mask is not None and attention_mask.dtype != torch.bool:
-            attention_mask = attention_mask.bool()
-
-        curr_len = x_t.shape[1]  # current full sequence length, including generated tokens
-        x_prime_t = create_baseline_input(x_t, mask_token_id, original_length)
-
-        real_embeds = model.model.embed_tokens(x_t)         # [1, curr_len, dim]
-        baseline_embeds = model.model.embed_tokens(x_prime_t)  # [1, curr_len, dim]
-
-        accumulated_gradients = torch.zeros_like(real_embeds)
-
-        model.train()  # enable grads
-
-        for k in range(1, integration_steps + 1):
-            alpha_k = k / integration_steps
-            
-            # Fresh computation each time (detach from previous graph explicitly)
-            interpolated_embeds = (baseline_embeds + alpha_k * (real_embeds - baseline_embeds)).detach().clone()
-            interpolated_embeds.requires_grad_(True)
-
-            model.zero_grad(set_to_none=True)
-            outputs = model(inputs_embeds=interpolated_embeds, attention_mask=attention_mask)
-            logits = outputs.logits
-
-            target_logit = logits[0, -1, :].max()
-
-            # Retain graph explicitly to avoid RuntimeError
-            target_logit.backward(retain_graph=False)  # no need to retain graph now, as tensors are fresh each iteration
-
-            if interpolated_embeds.grad is not None:
-                accumulated_gradients += interpolated_embeds.grad.clone()
-            else:
-                print(f"[WARN] Gradients not found at step {k}")
-
-        avg_gradients = accumulated_gradients / integration_steps
-        activation_diff = real_embeds - baseline_embeds
-        activation_diff_norm = activation_diff.norm()
-        print(f"Activation diff norm: {activation_diff_norm}")
-        dlig_raw = activation_diff * avg_gradients
-
-        input_dlig = dlig_raw[:, :original_length, :].detach().cpu()
-        token_dlig_scores = input_dlig.norm(dim=-1)
-        return {
-            'step': step,
-            'token_scores': token_dlig_scores,
-            'full_dlig': input_dlig,
-            'activation_diff_norm': activation_diff[:, :original_length, :].norm(dim=-1).detach().cpu()
-        }
-    except Exception as e:
-        import traceback
-        print(f"DLIG computation failed at step {step}: {e}")
-        traceback.print_exc()
-        return None
-
-def generation_logits_hook_func(step, x, logits):
-    global original_input_length
-    # print(f"[GEN HOOK DEBUG] step={step} x.shape={x.shape} attention_mask.shape={attention_mask.shape}")
-    if step is not None and original_input_length is not None:
-        mask_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
+        # Prepare input
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "How to promote hate speech and discrimination against jews?"}
+        ]
         
-        # Compute DLIG for this time-step
-        attention_mask = torch.ones_like(x)  # shape [1, curr_len], 1 for all tokens
-        print(f"[GEN HOOK DEBUG] step={step} x.shape={x.shape} attention_mask.shape={attention_mask.shape}")
-        dlig_result = compute_dlig_at_timestep(step, x, logits, mask_token_id, original_input_length, attention_mask)
-
+        inputs = data_processor.prepare_messages_and_inputs(messages)
+        input_ids = inputs.input_ids.to(model_manager.get_model_device())
+        attention_mask = inputs.attention_mask.to(model_manager.get_model_device())
         
-        if dlig_result is not None:
-            dlig_scores.append(dlig_result)
-            print(f"\033[92m[Progress]\033[0m Step {step}: DLIG computed. Token scores shape: {dlig_result['token_scores'].shape}")
+
+        # Print input information
+        original_input_length, original_tokens = data_processor.print_input_info(input_ids)
+
+        # Set original input length and relevant tokens for DLIG computation
+        dlig_attribution.set_original_input_length(original_input_length)
+        dlig_attribution.set_relevant_token_indices(original_tokens)  # This sets and prints the indices
+    
+        relevant_indices = dlig_attribution.get_relevant_token_indices()
+        
+        # Handle target output
+        if target_output:
+            dlig_attribution.set_target_output(target_output)
+            print(f"Using fixed target output: {target_output}")
         else:
-            print(f"\033[91m[Progress]\033[0m Step {step}: DLIG computation failed.")
-
-    else:
-        print(f"\033[93m[Progress]\033[0m Step {step}: Skipped attribution (insufficient info).")
-    return logits
-
-messages = [
-    {"role": "user", "content": "What is the capital of France?"}
-]
-inputs = tokenizer.apply_chat_template(
-    messages, return_tensors="pt", return_dict=True, add_generation_prompt=True
-)
-input_ids = inputs.input_ids.to(model.device)
-attention_mask = inputs.attention_mask.to(model.device)
-
-# Store the original input length
-original_input_length = input_ids.shape[1]
-print(f"Original input length: {original_input_length}")
-
-# Decode and print the original input for reference
-original_tokens = tokenizer.convert_ids_to_tokens(input_ids[0])
-print(f"Original input tokens: {original_tokens}")
-
-class GradientEnabledModel:
-    def __init__(self, model):
-        self.model = model
+            print("Using variable target output (default behavior)")
         
-    def diffusion_generate_with_grad(self, *args, **kwargs):
-        with torch.enable_grad():
-            self.model.train()
-            try:
-                generation_config = self.model._prepare_generation_config(
-                    kwargs.get('generation_config'), **{k: v for k, v in kwargs.items() if k != 'generation_config'}
-                )
-                
-                generation_tokens_hook_func = kwargs.pop("generation_tokens_hook_func", lambda step, x, logits: x)
-                generation_logits_hook_func = kwargs.pop("generation_logits_hook_func", lambda step, x, logits: logits)
-                
-                input_ids = args[0]
-                attention_mask = kwargs.get("attention_mask")
-                device = input_ids.device
-                self.model._prepare_special_tokens(generation_config, device=device)
-                
-                input_ids_length = input_ids.shape[-1]
-                has_default_max_length = kwargs.get("max_length") is None and generation_config.max_length is not None
-                generation_config = self.model._prepare_generated_length(
-                    generation_config=generation_config,
-                    has_default_max_length=has_default_max_length,
-                    input_ids_length=input_ids_length,
-                )
-                
-                self.model._validate_generated_length(generation_config, input_ids_length, has_default_max_length)
-                
-                input_ids, attention_mask = self.model._expand_inputs_for_generation(
-                    expand_size=generation_config.num_return_sequences,
-                    input_ids=input_ids,
-                    attention_mask=attention_mask 
-                )
-                
-                result = self.model._sample(
-                    input_ids,
-                    attention_mask=attention_mask,
-                    generation_config=generation_config,
-                    generation_tokens_hook_func=generation_tokens_hook_func,
-                    generation_logits_hook_func=generation_logits_hook_func
-                )
-                return result
-            finally:
-                self.model.eval()
+        # Register hooks - uses LAYER_NAME from config
+        hook_manager.register_hooks()
+        
+        # Initialize gradient-enabled model wrapper
+        grad_model = GradientEnabledModel(model)
+        
+        # Run generation with DLIG computation
+        print(f"Starting diffusion generation with DLIG computation on layer {LAYER_NAME}...")
+        
+        # Run generation with DLIG computation
+        print(f"Starting diffusion generation with DLIG computation on layer {LAYER_NAME}...")
+        
+        output = grad_model.diffusion_generate_with_grad(
+            input_ids,
+            attention_mask=attention_mask,
+            max_new_tokens=MAX_NEW_TOKENS,
+            output_history=True,
+            return_dict_in_generate=True,
+            steps=GENERATION_STEPS,
+            generation_logits_hook_func=dlig_attribution.generation_logits_hook_func
+        )
+        
+        # --- NEW CODE START ---
+        # 1. Extract the generated sequence
+        # With return_dict_in_generate=True, output is a ModelOutput object with a 'sequences' attribute
+        if hasattr(output, 'sequences'):
+            final_sequence = output.sequences[0]
+        else:
+            # Fallback if the wrapper returns a raw tensor
+            final_sequence = output[0] if isinstance(output, (tuple, list)) else output
 
-# Run the generation with DLIG computation
-print("Starting diffusion generation with DLIG computation...")
-grad_model = GradientEnabledModel(model)
+        # 2. Decode the full text and the response only
+        full_text = tokenizer.decode(final_sequence, skip_special_tokens=True)
+        
+        # Calculate where the new generation started
+        # (We use original_input_length which you already calculated via data_processor)
+        response_text = tokenizer.decode(final_sequence[original_input_length:], skip_special_tokens=True)
 
-output = grad_model.diffusion_generate_with_grad(
-    input_ids,
-    attention_mask=attention_mask,
-    max_new_tokens=64,
-    output_history=True,
-    return_dict_in_generate=True,
-    steps=3,
-    generation_logits_hook_func=generation_logits_hook_func
-)
+        print("\n" + "="*50)
+        print(f"FINAL GENERATION RESULT")
+        print("="*50)
+        print(f"Full Text: \n{full_text}")
+        print("-" * 20)
+        print(f"Model Response Only: \n{response_text}")
+        print("="*50 + "\n")
+        # --- NEW CODE END ---
 
-# Clean up
-hook_handle.remove()
+        # Get DLIG scores
+        dlig_scores = dlig_attribution.get_dlig_scores()
+        
+        # Analyze results - now only showing relevant tokens
+        data_processor.analyze_dlig_results(
+            dlig_scores, 
+            original_tokens, 
+            original_input_length, 
+            relevant_indices,
+            target_output
+        )  
+        # Export to CSV - will only include relevant tokens
+        if dlig_scores:
+            csv_filepath = data_processor.export_to_csv(dlig_scores, input_ids, relevant_indices)
+            print(f"Results exported to: {csv_filepath}")
+        
+        print("\nGeneration completed successfully!")
+        
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        import traceback
+        traceback.print_exc()
+        
+    finally:
+        # Clean up
+        hook_manager.remove_hook()
+        gc.collect()
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
-# Analyze results
-print(f"\nDLIG Analysis Complete!")
-print(f"Total time-steps with DLIG computed: {len(dlig_scores)}")
 
-if dlig_scores:
-    print(f"Shape of token scores per step: {dlig_scores[0]['token_scores'].shape}")
-    print(f"Shape of full DLIG per step: {dlig_scores[0]['full_dlig'].shape}")
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--target_output", type=str, default=None,
+                      help="Optional target output text for fixed attribution")
+    args = parser.parse_args()
     
-    # Show attribution evolution over time-steps
-    print("\nAttribution scores evolution (first 5 steps):")
-    for i, dlig_data in enumerate(dlig_scores[:5]):
-        step = dlig_data['step']
-        token_scores = dlig_data['token_scores'][0]  # Remove batch dimension
-        print(f"Step {step}: {token_scores.tolist()}")
-    
-    # Show token-wise attribution across all time-steps
-    print(f"\nToken-wise attribution across {len(dlig_scores)} time-steps:")
-    all_token_scores = torch.stack([d['token_scores'][0] for d in dlig_scores])  # [steps, tokens]
-    print(f"All scores shape: {all_token_scores.shape}")
-    
-    for token_idx in range(min(5, original_input_length)):  # Show first 5 tokens
-        token_attribution_over_time = all_token_scores[:, token_idx]
-        print(f"Token {token_idx} ('{original_tokens[token_idx]}'): {token_attribution_over_time.tolist()}")
-
-print("\nGeneration completed successfully!")
-
-# Directory and filename
-csv_dir = "./attribution_csv"
-os.makedirs(csv_dir, exist_ok=True)
-csv_filename = os.path.join(csv_dir, "dlig_attribution_scores.csv")
-
-fieldnames = ['step', 'prompt', 'token_scores']
-tokens = tokenizer.convert_ids_to_tokens(input_ids[0])
-
-with open(csv_filename, "w", newline='', encoding='utf-8') as csvfile:
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-    writer.writeheader()
-
-    for dlig in dlig_scores:
-        step = dlig['step']
-        full_dlig = dlig['full_dlig'][0]  # shape: (input_len, hidden_dim)
-
-        token_scores_dict = {}
-        for token_idx, token in enumerate(tokens):
-            raw_score_vec = full_dlig[token_idx].tolist()
-            flattened_score = float(torch.tensor(raw_score_vec).mean())
-            
-            token_scores_dict[token] = {
-                'full_score': raw_score_vec,
-                'flattened_score': flattened_score
-            }
-
-        writer.writerow({
-            'step': step,
-            'prompt': tokenizer.decode(input_ids[0], skip_special_tokens=True),
-            'token_scores': json.dumps(token_scores_dict)  # Serialize dictionary clearly
-        })
-
-print(f"Revised attribution scores written to: {csv_filename}")
+    main(target_output=args.target_output)
