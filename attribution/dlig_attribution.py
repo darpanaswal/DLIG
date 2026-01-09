@@ -4,11 +4,10 @@ DLIG (Diffusion Language Integrated Gradients) attribution implementation.
 
 import torch
 import traceback
-from config import INTEGRATION_STEPS
 from contextlib import contextmanager
 
 class DLIGAttribution:
-    def __init__(self, model, tokenizer, hook_manager, integration_steps=INTEGRATION_STEPS):
+    def __init__(self, model, tokenizer, hook_manager, integration_steps=20):
         self.model = model
         self.tokenizer = tokenizer
         self.integration_steps = integration_steps
@@ -18,7 +17,6 @@ class DLIGAttribution:
         self.dlig_scores = []
         self.original_input_length = None
         self.relevant_token_indices = []
-        self.target_output_ids = None
 
         # For activation manipulation
         self.interpolated_activations = None
@@ -33,7 +31,7 @@ class DLIGAttribution:
             if isinstance(outputs, tuple):
                 ref_tensor = outputs[0]
                 if self.interpolated_activations.shape != ref_tensor.shape:
-                     # Attempt generic reshaping if dimensions match but shapes differ slightly (e.g. 1, S, H vs S, H)
+                     # Attempt generic reshaping if dimensions match but shapes differ slightly
                     if self.interpolated_activations.numel() == ref_tensor.numel():
                          self.interpolated_activations = self.interpolated_activations.view_as(ref_tensor)
                     else:
@@ -52,13 +50,13 @@ class DLIGAttribution:
         return outputs
 
     @contextmanager
-    def activation_intervention(self, layer_name, interpolated=None):
+    def activation_intervention(self, layer_name=None, interpolated=None):
         """Context manager to manage activation intervention."""
+        # Fix: passing None allows the manager to use the already-resolved layer
         hooked_layer = self.hook_manager._get_layer(layer_name)
         self.use_interpolated_activations = interpolated is not None
         self.interpolated_activations = interpolated
         
-        # Register the intervention hook
         hook_handle = hooked_layer.register_forward_hook(self._intervention_hook_fn)
         try:
             yield
@@ -69,57 +67,61 @@ class DLIGAttribution:
 
     def compute_dlig_at_timestep(self, step, x_t, logits, mask_token_id, original_length, attention_mask):
         """
-        Computes DLIG for a specific diffusion timestep t.
-        Math Reference: DLIG_t(a) formula[cite: 29].
+        Computes DLIG for a specific diffusion timestep t[cite: 17, 20].
         """
-        # Ensure model gradients are enabled for the backward pass later
         self.model.eval()
-        self.model.zero_grad()
         
-        # 1. Capture Real Activations: a = h_t(X_t, C) [cite: 24]
+        if attention_mask.dtype == torch.long:
+            attention_mask = attention_mask.float()
+        
         with torch.no_grad():
+            # a = h_t(X_t, C) [cite: 21, 25]
             real_act = self.get_layer_activations(x_t, attention_mask)
             
-            # 2. Create Baseline Input: X_t with null condition 
-            # CRITICAL FIX: Do not cache. Create baseline from CURRENT x_t
+            # a' = h_t(X_t, ∅) [cite: 22, 25]
             baseline_inp = self.create_baseline_input(x_t, mask_token_id, original_length)
-            
-            # 3. Capture Baseline Activations: a' = h_t(X_t, empty) 
             baseline_act = self.get_layer_activations(baseline_inp, attention_mask)
 
-        # 4. Define Path: gamma(alpha) = a' + alpha(a - a') [cite: 27]
         activation_diff = real_act - baseline_act
         accumulated_gradients = torch.zeros_like(real_act)
 
-        # 5. Riemann Sum Approximation [cite: 29]
+        # Riemann Sum Approximation [cite: 14, 26, 27]
         for k in range(1, self.integration_steps + 1):
             alpha = k / self.integration_steps
-            
-            # Interpolate activations
             interpolated = baseline_act + alpha * activation_diff
-            interpolated.requires_grad_(True)
+            interpolated = interpolated.detach().requires_grad_(True)
 
-            # Inject interpolated activations into the model
             with self.activation_intervention(self.hook_manager.layer_name, interpolated):
-                # We need gradients here
                 outputs = self.model(input_ids=x_t, attention_mask=attention_mask)
-                
-                # Calculate Score F_t 
-                # F_t is the score of the predicted final sequence
-                target_score = self._compute_target_score(outputs.logits, x_t, original_length)
+                # Compute F_t for the current interpolated path [cite: 25, 27]
+                target_score = self._compute_target_score(outputs, x_t, original_length)
 
-            # Compute gradients: nabla_a F_t [cite: 29]
-            gradients = torch.autograd.grad(target_score, interpolated)[0]
+            if interpolated.grad is not None:
+                interpolated.grad.zero_()
+            
+            gradients = torch.autograd.grad(target_score, interpolated, retain_graph=False)[0]
             accumulated_gradients += gradients.detach()
 
-        # 6. Final Calculation: (a - a') * Avg(Gradients)
         avg_gradients = accumulated_gradients / self.integration_steps
-        dlig_raw = activation_diff * avg_gradients
+        dlig_raw = activation_diff.detach() * avg_gradients
 
         return self._process_results(dlig_raw.cpu(), original_length, step, activation_diff)
 
+    def _prepare_attention_mask(self, attention_mask):
+        """Ensure attention_mask has the correct dtype for the model."""
+        if attention_mask is None:
+            return None
+        
+        # Convert long/int to float if needed
+        if attention_mask.dtype in [torch.long, torch.int, torch.int32, torch.int64]:
+            attention_mask = attention_mask.float()
+        
+        return attention_mask
+
     def get_layer_activations(self, input_ids, attention_mask):
         """Helper to run a forward pass and capture specific layer output."""
+        attention_mask = self._prepare_attention_mask(attention_mask)
+        
         layer_acts = []
         def hook_fn(module, inp, out):
             if isinstance(out, tuple):
@@ -128,69 +130,65 @@ class DLIGAttribution:
                 hidden_states = out
             layer_acts.append(hidden_states.detach().clone())
 
+        # Fix: No longer passing a string here; uses the stored module from register_hook
         layer = self.hook_manager._get_layer()
-        # Register temporary hook
         handle = layer.register_forward_hook(hook_fn)
         
         try:
-            _ = self.model(input_ids=input_ids, attention_mask=attention_mask)
+            with torch.no_grad():
+                _ = self.model(input_ids=input_ids, attention_mask=attention_mask)
         finally:
             handle.remove()
 
         if not layer_acts:
-            raise RuntimeError(f"Failed to capture activations at layer {self.hook_manager.layer_name}")
+            raise RuntimeError(f"Failed to capture activations at layer {layer}")
             
         return layer_acts[0]
 
     def create_baseline_input(self, x_t, mask_token_id, original_length):
         """
-        Creates baseline input for the CURRENT timestep.
-        Math: X_t is the same (noise is preserved), but condition C is nullified.
+        Creates baseline input for DLIG.
+        
+        CRITICAL FIX: The baseline should have:
+        - SAME noisy/generated tokens (X_t remains unchanged)
+        - NULL condition (mask the prompt/condition part)
+        
+        Math: h_t(X_t, ∅) means same noise state, no conditioning.
         """
         baseline = x_t.clone()
         
-        # Mask the prompt tokens (0 to original_length)
-        # This effectively creates h(X_t, empty_set)
+        # Mask ONLY the prompt tokens (the condition C)
+        # This creates the "null condition" while preserving the noise state
         baseline[:, :original_length] = mask_token_id
         
         return baseline
     
-    def _compute_target_score(self, logits, input_ids, original_length):
+    def _compute_target_score(self, outputs, input_ids, original_length):
         """
-        Computes F_t: The score of the target sequence.
-        If a target is set, use that. If not, use the model's own predicted probabilities 
-        for the generated part (entropy minimization / confidence).
+        Computes F_t: The score of the PREDICTED FINAL SEQUENCE x̂_0.
+        Uses the Top-1 log-probability to represent the model's current 
+        internal prediction confidence.
         """
-        # We only care about the score of the generated tokens (after original_length)
-        gen_logits = logits[:, original_length:, :] # [Batch, Gen_Seq_Len, Vocab]
+        logits = outputs.logits
         
-        if self.target_output_ids is not None:
-            # If we have a ground truth target, sum log-probs of that target
-            # Align target length with current generation length if necessary
-            target_len = min(gen_logits.shape[1], self.target_output_ids.shape[1])
-            relevant_logits = gen_logits[:, :target_len, :]
-            relevant_targets = self.target_output_ids[:, :target_len]
-            
-            # Gather log probs of target tokens
-            log_probs = torch.log_softmax(relevant_logits, dim=-1)
-            target_log_probs = torch.gather(log_probs, 2, relevant_targets.unsqueeze(-1)).squeeze(-1)
-            return target_log_probs.sum()
-        else:
-            # If no target, maximize the confidence of the model's OWN prediction (Top-1)
-            # This represents "how confident is the model in this specific outcome"
-            probs = torch.softmax(gen_logits, dim=-1)
-            max_probs, _ = probs.max(dim=-1)
-            return torch.log(max_probs).sum()
+        # Focus on the generated portion (after the prompt/condition C) [cite: 21, 45]
+        gen_logits = logits[:, original_length:, :] 
+        
+        # Dynamic Scoring: Sum of max log-probs for the predicted tokens
+        # This represents "how certain is the model about its current x̂_0 prediction"
+        log_probs = torch.log_softmax(gen_logits, dim=-1)
+        max_log_probs, _ = log_probs.max(dim=-1)
+        return max_log_probs.sum()
 
     def _process_results(self, dlig_raw, original_length, step, activation_diff):
         """Process raw DLIG results into final scores."""
-        # Focus on the user input section (Condition C)
+        # Focus on the prompt/condition section (C)
         if self.relevant_token_indices:
             input_dlig = dlig_raw[:, self.relevant_token_indices, :].detach().cpu()
         else:
             input_dlig = dlig_raw[:, :original_length, :].detach().cpu()
             
-        token_scores = input_dlig.sum(dim=-1) # Sum across hidden dimension
+        token_scores = input_dlig.sum(dim=-1)  # Sum across hidden dimension
         
         return {
             'step': step,
@@ -199,39 +197,69 @@ class DLIGAttribution:
             'activation_diff_norm': activation_diff[:, :original_length, :].norm(dim=-1).detach().cpu()
         }
 
-    # ... [Keep set_target_output, identify_relevant_tokens, etc. as they were] ...
+    def identify_relevant_tokens(self, input_tokens):
+        """
+        Identify relevant tokens (non-special tokens) for attribution.
+        This filters out padding, BOS, EOS, etc.
+        """
+        special_tokens = {
+            self.tokenizer.pad_token,
+            self.tokenizer.bos_token,
+            self.tokenizer.eos_token,
+            self.tokenizer.unk_token,
+            self.tokenizer.sep_token,
+            self.tokenizer.cls_token,
+            self.tokenizer.mask_token,
+        }
+        # Remove None values
+        special_tokens = {t for t in special_tokens if t is not None}
+        
+        relevant_indices = []
+        for idx, token in enumerate(input_tokens):
+            if token not in special_tokens:
+                relevant_indices.append(idx)
+        
+        return relevant_indices
+
+    def set_target_output(self, target_text):
+        """
+        Set a specific target output for attribution.
+        """
+        target_ids = self.tokenizer.encode(target_text, return_tensors="pt")
+        self.target_output_ids = target_ids.to(next(self.model.parameters()).device)
+        print(f"[DEBUG] Target output set: {target_text}")
+        print(f"[DEBUG] Target IDs shape: {self.target_output_ids.shape}")
 
     def generation_logits_hook_func(self, step, x, logits):
         """
         Hook called during generation loop.
-        x: The current latent/input input_ids at step t.
+        x: The current input_ids at diffusion step t.
         """
         if step is not None and self.original_input_length is not None:
-            # Use pad_token_id or mask_token_id for the "Null" condition
             mask_token_id = (
                 self.tokenizer.mask_token_id 
                 if self.tokenizer.mask_token_id is not None 
                 else self.tokenizer.pad_token_id
             )
             
-            attention_mask = torch.ones_like(x, dtype=torch.long, device=x.device)
+            # Create attention_mask with proper dtype (float instead of long)
+            attention_mask = torch.ones_like(x, dtype=torch.float32, device=x.device)
 
-            # Compute DLIG for this step
             try:
                 dlig_result = self.compute_dlig_at_timestep(
                     step, x, logits, mask_token_id, self.original_input_length, attention_mask
                 )
                 self.dlig_scores.append(dlig_result)
-                print(f"Step {step}: DLIG computed.")
+                print(f"Step {step}: DLIG computed successfully.")
             except Exception as e:
                 print(f"Step {step}: DLIG failed - {e}")
                 traceback.print_exc()
 
-            # Optional: Intermediate decoding
+            # Optional: Show intermediate generation
             try:
                 decoded = self.tokenizer.decode(x[0, self.original_input_length:], skip_special_tokens=True)
-                print(f"Step {step} generation state: {decoded[:50]}...")
-            except: 
+                print(f"Step {step} partial generation: {decoded[:50]}...")
+            except:
                 pass
 
         return logits
@@ -254,3 +282,4 @@ class DLIGAttribution:
     def reset_scores(self):
         self.dlig_scores = []
         self.relevant_token_indices = []
+        self.target_output_ids = None
