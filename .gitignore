@@ -3,3 +3,4 @@ Dream
 *.sh
 runs
 .env
+outputs
