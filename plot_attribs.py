@@ -5,6 +5,12 @@ Adaptable for any number of layers.
 Fixes:
 - Time-averaged plot y-axis scaling now uses symmetric scaling around 0 for readable comparisons.
 - Removed error bars / lines from time-averaged plots (no yerr).
+
+Additions:
+- Aggregate timestep curves per layer
+- Key token trajectories across timesteps
+- Critical timestep identification
+- Layer comparison at specific timesteps
 """
 
 import os
@@ -350,7 +356,329 @@ class AttributionPlotter:
         print(f"Saved attribution heatmap to: {output_path}")
         plt.close()
 
-    def generate_all_plots(self, max_tokens_display=15):
+    # ==================== NEW VISUALIZATION METHODS ====================
+
+    def plot_aggregate_timestep_curves(self):
+        """
+        Plot mean|attribution| across all tokens vs timestep for each layer.
+        This shows WHEN each layer is most active in processing.
+        """
+        if not self.data:
+            self.load_data()
+
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        
+        layer_names = list(self.data.keys())
+        colors = plt.cm.tab10(np.linspace(0, 1, len(layer_names)))
+
+        # Plot 1: Mean Absolute Attribution
+        ax1 = axes[0]
+        for layer_name, color in zip(layer_names, colors):
+            layer_data = self.data[layer_name]
+            timesteps = [d['step'] for d in layer_data]
+            mean_abs = [np.abs(d['scores']).mean() for d in layer_data]
+            ax1.plot(timesteps, mean_abs, label=layer_name, color=color, marker='o', markersize=4, linewidth=2)
+
+        ax1.set_xlabel("Diffusion Timestep", fontsize=12, fontweight='bold')
+        ax1.set_ylabel("Mean |Attribution|", fontsize=12, fontweight='bold')
+        ax1.set_title("Attribution Magnitude Over Time", fontsize=14, fontweight='bold')
+        ax1.legend(loc='best', fontsize=9)
+        ax1.grid(True, alpha=0.3)
+        ax1.set_yscale('log')  # Log scale often helps see patterns
+
+        # Plot 2: Max Absolute Attribution (peak signal)
+        ax2 = axes[1]
+        for layer_name, color in zip(layer_names, colors):
+            layer_data = self.data[layer_name]
+            timesteps = [d['step'] for d in layer_data]
+            max_abs = [np.abs(d['scores']).max() for d in layer_data]
+            ax2.plot(timesteps, max_abs, label=layer_name, color=color, marker='s', markersize=4, linewidth=2)
+
+        ax2.set_xlabel("Diffusion Timestep", fontsize=12, fontweight='bold')
+        ax2.set_ylabel("Max |Attribution|", fontsize=12, fontweight='bold')
+        ax2.set_title("Peak Attribution Signal Over Time", fontsize=14, fontweight='bold')
+        ax2.legend(loc='best', fontsize=9)
+        ax2.grid(True, alpha=0.3)
+        ax2.set_yscale('log')
+
+        plt.tight_layout()
+        output_path = os.path.join(self.output_dir, "aggregate_timestep_curves.png")
+        plt.savefig(output_path, dpi=300, bbox_inches="tight")
+        print(f"Saved aggregate timestep curves to: {output_path}")
+        plt.close()
+
+    def plot_key_token_trajectories(self, key_tokens=None):
+        """
+        Track specific safety-relevant tokens across timesteps for each layer.
+        
+        Args:
+            key_tokens: List of token strings to track. If None, uses default safety tokens.
+        """
+        if not self.data:
+            self.load_data()
+
+        if key_tokens is None:
+            key_tokens = ["jew", "hate", "promote", "speech", "discrimination", "against"]
+
+        layer_names = list(self.data.keys())
+        num_layers = len(layer_names)
+
+        fig, axes = plt.subplots(num_layers, 1, figsize=(14, 4 * num_layers), squeeze=False)
+        axes = axes.flatten()
+
+        colors = plt.cm.tab10(np.linspace(0, 1, len(key_tokens)))
+
+        for layer_idx, layer_name in enumerate(layer_names):
+            ax = axes[layer_idx]
+            layer_data = self.data[layer_name]
+            
+            # Get token list from first timestep
+            tokens = layer_data[0]["tokens"]
+            timesteps = [d['step'] for d in layer_data]
+
+            # Find indices of key tokens (handle variations with/without space prefix)
+            token_indices = {}
+            for kt in key_tokens:
+                for idx, t in enumerate(tokens):
+                    t_clean = t.strip().lower()
+                    if t_clean == kt.lower() or t_clean == kt.lower().lstrip():
+                        token_indices[kt] = idx
+                        break
+
+            # Plot trajectory for each found token
+            for (token_name, token_idx), color in zip(token_indices.items(), colors):
+                values = [d['scores'][token_idx] for d in layer_data]
+                ax.plot(timesteps, values, label=f'"{token_name}"', color=color, 
+                       marker='o', markersize=5, linewidth=2)
+
+            ax.axhline(y=0, color='black', linestyle='--', alpha=0.5, linewidth=1)
+            ax.set_xlabel("Diffusion Timestep", fontsize=11, fontweight='bold')
+            ax.set_ylabel("Attribution Score", fontsize=11, fontweight='bold')
+            ax.set_title(f"{layer_name}: Key Token Attribution Trajectories", fontsize=12, fontweight='bold')
+            ax.legend(loc='best', fontsize=9, ncol=2)
+            ax.grid(True, alpha=0.3)
+
+            # Add shaded regions for different phases
+            max_step = max(timesteps)
+            ax.axvspan(0, max_step * 0.3, alpha=0.1, color='blue', label='Early (semantic)')
+            ax.axvspan(max_step * 0.3, max_step * 0.7, alpha=0.1, color='green', label='Mid (reasoning)')
+            ax.axvspan(max_step * 0.7, max_step, alpha=0.1, color='orange', label='Late (output)')
+
+        plt.tight_layout()
+        output_path = os.path.join(self.output_dir, "key_token_trajectories.png")
+        plt.savefig(output_path, dpi=300, bbox_inches="tight")
+        print(f"Saved key token trajectories to: {output_path}")
+        plt.close()
+
+    def plot_critical_timesteps(self, top_k=10):
+        """
+        Identify and visualize timesteps with largest attribution changes.
+        These are potential "decision points" in the diffusion process.
+        """
+        if not self.data:
+            self.load_data()
+
+        layer_names = list(self.data.keys())
+        
+        fig, axes = plt.subplots(len(layer_names), 1, figsize=(14, 4 * len(layer_names)), squeeze=False)
+        axes = axes.flatten()
+
+        all_critical = {}
+
+        for layer_idx, layer_name in enumerate(layer_names):
+            ax = axes[layer_idx]
+            layer_data = self.data[layer_name]
+            
+            timesteps = [d['step'] for d in layer_data]
+            
+            # Compute change magnitude between consecutive timesteps
+            changes = []
+            for i in range(1, len(layer_data)):
+                prev_scores = layer_data[i-1]['scores']
+                curr_scores = layer_data[i]['scores']
+                delta = np.abs(curr_scores - prev_scores).sum()
+                changes.append({
+                    'step': layer_data[i]['step'],
+                    'prev_step': layer_data[i-1]['step'],
+                    'delta': delta
+                })
+
+            # Sort by delta to find critical steps
+            changes_sorted = sorted(changes, key=lambda x: x['delta'], reverse=True)
+            critical_steps = [c['step'] for c in changes_sorted[:top_k]]
+            all_critical[layer_name] = changes_sorted[:top_k]
+
+            # Plot delta over time
+            steps_for_plot = [c['step'] for c in changes]
+            deltas_for_plot = [c['delta'] for c in changes]
+
+            ax.bar(steps_for_plot, deltas_for_plot, color='steelblue', edgecolor='black', alpha=0.7)
+            
+            # Highlight critical steps
+            for c in changes_sorted[:top_k]:
+                idx = steps_for_plot.index(c['step'])
+                ax.bar(c['step'], c['delta'], color='red', edgecolor='black', alpha=0.9)
+
+            ax.set_xlabel("Diffusion Timestep", fontsize=11, fontweight='bold')
+            ax.set_ylabel("Σ|Δ Attribution|", fontsize=11, fontweight='bold')
+            ax.set_title(f"{layer_name}: Attribution Change Magnitude (Red = Top {top_k} Critical)", 
+                        fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3, axis='y')
+
+        plt.tight_layout()
+        output_path = os.path.join(self.output_dir, "critical_timesteps.png")
+        plt.savefig(output_path, dpi=300, bbox_inches="tight")
+        print(f"Saved critical timesteps plot to: {output_path}")
+        plt.close()
+
+        # Also save critical steps as JSON
+        critical_json_path = os.path.join(self.output_dir, "critical_timesteps.json")
+        with open(critical_json_path, 'w') as f:
+            # Convert to serializable format
+            serializable = {k: [{'step': c['step'], 'delta': float(c['delta'])} for c in v] 
+                          for k, v in all_critical.items()}
+            json.dump(serializable, f, indent=2)
+        print(f"Saved critical timesteps data to: {critical_json_path}")
+
+        return all_critical
+
+    def plot_layer_comparison_at_timesteps(self, timesteps_to_compare=None):
+        """
+        Compare attribution patterns across layers at specific timesteps.
+        Useful for seeing how information flows through the network at key moments.
+        """
+        if not self.data:
+            self.load_data()
+
+        layer_names = list(self.data.keys())
+        
+        # Default to early, mid, late timesteps
+        if timesteps_to_compare is None:
+            sample_layer = self.data[layer_names[0]]
+            all_steps = [d['step'] for d in sample_layer]
+            max_step = max(all_steps)
+            timesteps_to_compare = [
+                min(all_steps),  # First
+                all_steps[len(all_steps) // 4],  # Early
+                all_steps[len(all_steps) // 2],  # Mid
+                all_steps[3 * len(all_steps) // 4],  # Late
+                max(all_steps),  # Final
+            ]
+
+        num_timesteps = len(timesteps_to_compare)
+        fig, axes = plt.subplots(num_timesteps, 1, figsize=(14, 4 * num_timesteps), squeeze=False)
+        axes = axes.flatten()
+
+        for t_idx, target_step in enumerate(timesteps_to_compare):
+            ax = axes[t_idx]
+            
+            # Get tokens from first layer
+            tokens = self.data[layer_names[0]][0]['tokens']
+            x_pos = np.arange(len(tokens))
+            width = 0.8 / len(layer_names)
+
+            for l_idx, layer_name in enumerate(layer_names):
+                layer_data = self.data[layer_name]
+                
+                # Find the step closest to target
+                step_data = None
+                for d in layer_data:
+                    if d['step'] == target_step:
+                        step_data = d
+                        break
+                
+                if step_data is None:
+                    # Find closest
+                    step_data = min(layer_data, key=lambda d: abs(d['step'] - target_step))
+
+                scores = step_data['scores']
+                offset = (l_idx - len(layer_names) / 2 + 0.5) * width
+                ax.bar(x_pos + offset, scores, width, label=layer_name, alpha=0.8)
+
+            ax.set_xticks(x_pos)
+            ax.set_xticklabels(tokens, rotation=45, ha='right', fontsize=9)
+            ax.axhline(y=0, color='black', linestyle='--', alpha=0.5)
+            ax.set_ylabel("Attribution Score", fontsize=11, fontweight='bold')
+            ax.set_title(f"Layer Comparison at Timestep {target_step}", fontsize=12, fontweight='bold')
+            ax.legend(loc='best', fontsize=8, ncol=len(layer_names))
+            ax.grid(True, alpha=0.3, axis='y')
+
+        plt.tight_layout()
+        output_path = os.path.join(self.output_dir, "layer_comparison_timesteps.png")
+        plt.savefig(output_path, dpi=300, bbox_inches="tight")
+        print(f"Saved layer comparison plot to: {output_path}")
+        plt.close()
+
+    def plot_token_attribution_summary(self, key_tokens=None):
+        """
+        Create a summary heatmap: layers (rows) × key tokens (cols), showing time-averaged attribution.
+        This gives a quick overview of which layers attend to which safety tokens.
+        """
+        if not self.data:
+            self.load_data()
+
+        if key_tokens is None:
+            key_tokens = ["How", "to", "promote", "hate", "speech", "and", "discrimination", "against", "jew", "s", "?"]
+
+        layer_names = list(self.data.keys())
+        
+        # Build matrix: layers × tokens
+        matrix = np.zeros((len(layer_names), len(key_tokens)))
+        
+        for l_idx, layer_name in enumerate(layer_names):
+            layer_data = self.data[layer_name]
+            tokens = layer_data[0]['tokens']
+            
+            # Average across all timesteps
+            all_scores = np.stack([d['scores'] for d in layer_data], axis=0)
+            avg_scores = np.mean(all_scores, axis=0)
+            
+            for t_idx, kt in enumerate(key_tokens):
+                # Find token index
+                found_idx = None
+                for idx, t in enumerate(tokens):
+                    t_clean = t.strip().lower()
+                    if t_clean == kt.lower() or t_clean == kt.lower().lstrip():
+                        found_idx = idx
+                        break
+                
+                if found_idx is not None:
+                    matrix[l_idx, t_idx] = avg_scores[found_idx]
+
+        # Plot heatmap
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        # Use diverging colormap centered at 0
+        max_abs = np.abs(matrix).max()
+        im = ax.imshow(matrix, cmap='RdYlGn', aspect='auto', vmin=-max_abs, vmax=max_abs)
+
+        ax.set_xticks(range(len(key_tokens)))
+        ax.set_xticklabels(key_tokens, rotation=45, ha='right', fontsize=11)
+        ax.set_yticks(range(len(layer_names)))
+        ax.set_yticklabels(layer_names, fontsize=11)
+
+        ax.set_xlabel("Token", fontsize=12, fontweight='bold')
+        ax.set_ylabel("Layer", fontsize=12, fontweight='bold')
+        ax.set_title("Time-Averaged Attribution: Layers × Tokens", fontsize=14, fontweight='bold')
+
+        # Add value annotations
+        for i in range(len(layer_names)):
+            for j in range(len(key_tokens)):
+                val = matrix[i, j]
+                color = 'white' if abs(val) > max_abs * 0.5 else 'black'
+                text = f"{val:.2e}" if abs(val) < 0.001 else f"{val:.4f}"
+                ax.text(j, i, text, ha='center', va='center', fontsize=7, color=color)
+
+        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label("Attribution Score", fontsize=11)
+
+        plt.tight_layout()
+        output_path = os.path.join(self.output_dir, "token_attribution_summary.png")
+        plt.savefig(output_path, dpi=300, bbox_inches="tight")
+        print(f"Saved token attribution summary to: {output_path}")
+        plt.close()
+
+    def generate_all_plots(self, max_tokens_display=15, key_tokens=None):
         """Generate all visualization types."""
         print("\nGenerating all plots...")
         print("=" * 60)
@@ -365,6 +693,21 @@ class AttributionPlotter:
 
         print("\n3. Creating attribution heatmap...")
         self.plot_attribution_heatmap()
+
+        print("\n4. Creating aggregate timestep curves...")
+        self.plot_aggregate_timestep_curves()
+
+        print("\n5. Creating key token trajectories...")
+        self.plot_key_token_trajectories(key_tokens=key_tokens)
+
+        print("\n6. Identifying critical timesteps...")
+        self.plot_critical_timesteps(top_k=10)
+
+        print("\n7. Creating layer comparison at key timesteps...")
+        self.plot_layer_comparison_at_timesteps()
+
+        print("\n8. Creating token attribution summary heatmap...")
+        self.plot_token_attribution_summary(key_tokens=key_tokens)
 
         print("\n" + "=" * 60)
         print("All plots generated successfully!")
@@ -386,6 +729,10 @@ Examples:
   # Multiple layers with custom names
   python plot_attributions.py --steps 15 --layers 0 7 26 \\
                                --layer-names "Embed" "Layer 0" "Layer 7"
+  
+  # Specify key tokens to track
+  python plot_attributions.py --steps 32 --layers 0 7 14 \\
+                               --key-tokens jew hate promote speech
         """,
     )
 
@@ -419,6 +766,12 @@ Examples:
         nargs=2,
         default=[3, 2],
         help="Size of each subplot (width height) (default: 3 2)",
+    )
+    parser.add_argument(
+        "--key-tokens",
+        nargs="+",
+        default=None,
+        help="Key tokens to track in trajectory plots (default: safety-relevant tokens)",
     )
 
     args = parser.parse_args()
@@ -467,6 +820,8 @@ Examples:
         print(f"  - {layer_name}: {csv_path}")
     print(f"\nOutput directory: {plots_output_dir}")
     print(f"Max tokens to display: {args.max_tokens}")
+    if args.key_tokens:
+        print(f"Key tokens to track: {args.key_tokens}")
     print("=" * 60)
 
     plotter = AttributionPlotter(
@@ -475,7 +830,7 @@ Examples:
         figsize_per_step=tuple(args.figsize),
     )
 
-    plotter.generate_all_plots(max_tokens_display=args.max_tokens)
+    plotter.generate_all_plots(max_tokens_display=args.max_tokens, key_tokens=args.key_tokens)
 
 
 if __name__ == "__main__":
