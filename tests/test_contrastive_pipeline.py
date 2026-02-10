@@ -1,6 +1,6 @@
 # tests/test_contrastive_pipeline.py
-import unittest
 import torch
+import unittest
 
 from utils.contrastive_utils import (
     compute_delta_dlig_site_value,

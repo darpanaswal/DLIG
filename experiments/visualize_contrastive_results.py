@@ -15,19 +15,16 @@ Outputs:
 No seaborn. Matplotlib only.
 """
 
-from __future__ import annotations
-
-import argparse
+import os
 import csv
 import json
-import os
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
-
 import torch
+import argparse
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 
 # New type: layer -> step -> {metric: value}

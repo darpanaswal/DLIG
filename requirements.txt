@@ -7,3 +7,4 @@ seaborn
 matplotlib
 requests
 python-dotenv
+datasets

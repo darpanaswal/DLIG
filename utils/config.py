@@ -18,3 +18,4 @@ if not openai_token or not hf_token or not wandb_token:
 
 MODEL_PATH = BASE_DIR / "models/Dream"
 OUTPUT_DIR = BASE_DIR / "outputs"
+CONTRAST_DATASET = BASE_DIR / "data/contrastive_dataset.json"

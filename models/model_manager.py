@@ -4,8 +4,8 @@ Model loading and management utilities.
 """
 
 import torch
-from transformers import AutoModel, AutoTokenizer
 from utils.config import MODEL_PATH
+from transformers import AutoModel, AutoTokenizer
 
 class ModelManager:
     def __init__(self, model_path=str(MODEL_PATH), device_map="auto", torch_dtype="float32"):

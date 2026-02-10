@@ -1,4 +1,3 @@
-# utils/contrastive_utils.py
 """
 Utilities for contrastive ΔDLIG computation and site-score aggregation.
 """
@@ -20,15 +19,8 @@ def compute_delta_dlig_site_value(
 ) -> torch.Tensor:
     """
     Compute a scalar per-example site value from ΔDLIG tensors.
-
-    Inputs:
-      dlig_*_full: [B, L_prompt, H]
-
-    Output:
-      site_value: [B] (norm over prompt tokens and hidden dim)
-
-    Norm definition for site scoring:
-      ||ΔDLIG|| := L2 over (prompt_tokens, hidden_dim) by default.
+    
+    (Retained for backward compatibility, though unused in distributional runner).
     """
     if dlig_harm_full.shape != dlig_benign_full.shape:
         raise ValueError(f"DLIG shape mismatch: {dlig_harm_full.shape} vs {dlig_benign_full.shape}")
@@ -77,7 +69,7 @@ def update_site_score_accumulator(
         layer: Layer identifier
         step: Timestep
         site_values: Tensor of values to accumulate
-        prefix: Optional prefix for keys (e.g., "delta_" or "harm_")
+        prefix: Optional prefix for keys (e.g., "harm_", "benign_")
     """
     key = (layer, step)
     if key not in accum:
@@ -105,11 +97,12 @@ def finalize_site_scores(
 ) -> Dict[str, Dict[str, Dict[str, Any]]]:
     """
     Returns nested dict: scores[layer][step_str] = {
-        "delta_mean": ..., "delta_std": ..., "delta_max": ...,
         "harm_mean": ..., "harm_std": ..., "harm_max": ...,
+        "benign_mean": ..., "benign_std": ..., "benign_max": ...,
+        "diff_mean": ..., "diff_abs_mean": ...
     }
     
-    Handles both prefixed (delta_, harm_) and legacy unprefixed accumulators.
+    Computes S_diff = S_harm - S_benign automatically if both exist.
     """
     out: Dict[str, Dict[str, Dict[str, Any]]] = {}
     
@@ -135,7 +128,7 @@ def finalize_site_scores(
             sum_key = f"{prefix}sum" if prefix else "sum"
             sum_sq_key = f"{prefix}sum_sq" if prefix else "sum_sq"
             count_key = f"{prefix}count" if prefix else "count"
-            max_key = f"{prefix}max" if prefix else "max"
+            max_key = f"{prefix}max"
             
             if sum_key not in v:
                 continue
@@ -156,6 +149,13 @@ def finalize_site_scores(
             step_data[f"{out_prefix}std"] = float(std)
             step_data[f"{out_prefix}max"] = float(max_val)
         
+        # --- Distributional Contrast Logic ---
+        # If we have both harmful and benign means, compute the difference
+        if "harm_mean" in step_data and "benign_mean" in step_data:
+            diff = step_data["harm_mean"] - step_data["benign_mean"]
+            step_data["diff_mean"] = diff
+            step_data["diff_abs_mean"] = abs(diff)
+
         out[str(layer)][str(step)] = step_data
     
     return out
