@@ -110,24 +110,21 @@ def finalize_site_scores(
         out.setdefault(str(layer), {})
         step_data: Dict[str, Any] = {}
         
-        # Process each prefix that might be present
+        # Process each prefix that might be present.
+        # update_site_score_accumulator stores keys like "harm_sum", "benign_count", etc.
+        # where prefix is e.g. "harm_" (with trailing underscore).
+        # We extract the full prefix (including underscore) by removing the field suffix.
         prefixes_found = set()
         for key in v.keys():
-            if key.endswith("_sum"):
-                prefix = key[:-4]  # Remove "_sum"
-                if prefix:
-                    prefixes_found.add(prefix)
-                else:
-                    prefixes_found.add("")  # Legacy unprefixed
-        
-        # If no prefixes found, check for legacy format
-        if not prefixes_found and "sum" in v:
-            prefixes_found.add("")
+            if key.endswith("sum") and not key.endswith("sum_sq"):
+                # key is e.g. "harm_sum" or "sum" (legacy)
+                prefix = key[:-3]  # Remove "sum" -> "harm_" or ""
+                prefixes_found.add(prefix)
         
         for prefix in prefixes_found:
-            sum_key = f"{prefix}sum" if prefix else "sum"
-            sum_sq_key = f"{prefix}sum_sq" if prefix else "sum_sq"
-            count_key = f"{prefix}count" if prefix else "count"
+            sum_key = f"{prefix}sum"
+            sum_sq_key = f"{prefix}sum_sq"
+            count_key = f"{prefix}count"
             max_key = f"{prefix}max"
             
             if sum_key not in v:

@@ -20,6 +20,7 @@ import csv
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+from utils.config import OUTPUT_DIR
 from matplotlib.gridspec import GridSpec
 
 
@@ -776,7 +777,7 @@ Examples:
 
     args = parser.parse_args()
 
-    output_dir = f"outputs/{args.steps}_steps"
+    output_dir = OUTPUT_DIR / f"{args.steps}_steps"
     csv_files = {}
 
     for layer in args.layers:
@@ -808,7 +809,7 @@ Examples:
             f"Expected files like: layers{args.layers[0]}_{args.steps}.csv"
         )
 
-    plots_output_dir = "outputs/plots"
+    plots_output_dir = f"{output_dir}/plots"
 
     print("=" * 60)
     print("DLIG Attribution Plotter")
