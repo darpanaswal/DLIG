@@ -16,6 +16,15 @@ from typing import Optional, Any
 from contextlib import contextmanager
 
 
+class _LogitsShim:
+    """Wraps a bare logits tensor so _compute_target_score (which reads
+    outputs.logits) works for the partial-forward path without changes."""
+    __slots__ = ("logits",)
+
+    def __init__(self, logits: torch.Tensor):
+        self.logits = logits
+
+
 class DLIGAttribution:
     def __init__(
         self,
@@ -27,14 +36,26 @@ class DLIGAttribution:
         enable_timing: bool = False,
         timing_log_every_chunks: int = 1,
         disable_kv_cache: bool = True,
+        score_mode: str = "logprob",   # <-- add
+        use_partial_forward: bool = True,
+        backend=None,   # ModelBackend; if None, a DreamBackend is built (back-compat)
     ):
         self.model = model
         self.tokenizer = tokenizer
+        # Backend isolates all model-family-specific internals (layers, RoPE vs
+        # absolute pos, final norm, shift convention, sampler). Defaults to Dream
+        # so existing call sites that don't pass a backend behave unchanged.
+        if backend is None:
+            from models.backends import build_backend
+            backend = build_backend(model, tokenizer, family="dream")
+        self.backend = backend
         self.integration_steps = int(integration_steps)
         self.integration_batch_size = int(integration_batch_size) if integration_batch_size is not None else None
         self.enable_timing = bool(enable_timing)
         self.timing_log_every_chunks = max(1, int(timing_log_every_chunks))
         self.disable_kv_cache = bool(disable_kv_cache)
+        self.score_mode = str(score_mode)    # <-- add
+        self.use_partial_forward = bool(use_partial_forward)
         self.hook_manager = hook_manager
 
         # DLIG attributes
@@ -130,12 +151,28 @@ class DLIGAttribution:
             self.interpolated_activations = None
 
     def _model_forward_no_mask(self, input_ids: torch.Tensor) -> Any:
-        if self.disable_kv_cache:
-            try:
-                return self.model(input_ids=input_ids, attention_mask=None, use_cache=False)
-            except TypeError:
-                return self.model(input_ids=input_ids, attention_mask=None)
-        return self.model(input_ids=input_ids, attention_mask=None)
+        # Backend supplies full forward (full attention, no KV cache) and returns
+        # logits; wrap so .logits keeps working for _compute_target_score.
+        logits = self.backend.forward_logits(input_ids)
+        return _LogitsShim(logits)
+
+    # ------------------------------------------------------------------ #
+    #  Partial-forward helpers (suffix-only replay for speed)
+    # ------------------------------------------------------------------ #
+    def _resolve_suffix_start(self) -> int:
+        """Delegates to the backend (hook fires after hooked module)."""
+        spec = self.hook_manager.layer_name
+        if spec is None:
+            raise ValueError("hook_manager.layer_name is None; partial-forward needs a known layer spec.")
+        return self.backend.resolve_suffix_start(spec)
+
+    def _suffix_forward(self, hidden_states: torch.Tensor, start_layer_idx: int) -> torch.Tensor:
+        """
+        Replay decoder suffix -> final norm -> lm_head via the backend.
+        Backend hides family differences (Dream RoPE per-layer vs DiffuGPT absolute
+        positions baked at embed). Returns logits [B, S, |V|], all positions.
+        """
+        return self.backend.suffix_forward(hidden_states, start_layer_idx)
 
     def get_layer_activations(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Run a forward pass and capture single layer output. (Original, kept for compat.)"""
@@ -168,34 +205,79 @@ class DLIGAttribution:
         return baseline
 
     def _compute_target_score(self, outputs, input_ids, original_length):
-        logits = outputs.logits
+        """
+        DLIG scoring function F_t.
+        Updated to support Contrastive Attribution (fixed target) if self.target_output_ids is set.
+        """
+        logits = outputs.logits  # [B, S, |V|] raw pre-softmax logits z
 
-        if logits.shape[1] <= original_length:
-            log_probs = torch.log_softmax(logits, dim=-1)
-            max_log_probs, _ = log_probs.max(dim=-1)
-            return max_log_probs.sum()
-
-        gen_logits = logits[:, original_length:-1, :]
-        target_tokens = input_ids[:, original_length + 1:]
+        if logits.shape[1] <= original_length + 1:
+            return logits.sum() * 0.0  # graph-preserving zero (autograd-safe)
 
         mask_token_id = self.tokenizer.mask_token_id
         if mask_token_id is None:
             mask_token_id = self.tokenizer.pad_token_id
         eos_token_id = self.tokenizer.eos_token_id
 
-        non_mask = (target_tokens != mask_token_id)
-        if eos_token_id is not None:
-            non_mask = non_mask & (target_tokens != eos_token_id)
-        non_mask = non_mask.float()
+        # --- NEW: CONTRASTIVE TARGET OVERRIDE ---
+        if hasattr(self, 'target_output_ids') and self.target_output_ids is not None:
+            target_ids = self.target_output_ids
+            if target_ids.dim() == 2:
+                target_ids = target_ids.squeeze(0)  # Make it 1D
+            
+            target_len = target_ids.shape[0]
+            avail_len = logits.shape[1] - original_length
+            
+            # Align lengths (score up to the max available overlap)
+            score_len = min(target_len, avail_len)
+            if score_len <= 0:
+                return logits.sum() * 0.0
+                
+            gen_logits = logits[:, original_length : original_length + score_len, :]
+            
+            # Repeat target for the batch dimension and force onto the logits device
+            B = gen_logits.shape[0]
+            target_tokens = target_ids[:score_len].unsqueeze(0).repeat(B, 1).to(gen_logits.device)
+            
+            # In contrastive mode, we want to score EVERY token in the target string, 
+            # so the mask is fully unmasked (ones)
+            non_mask = torch.ones_like(target_tokens, dtype=gen_logits.dtype)
+            
+        # --- ORIGINAL: SELF-GENERATED TARGET ---
+        else:
+            # Shift convention is backend-specific and CANNOT be caught by the
+            # completeness check (which is shift-agnostic). Dream/Qwen: logits at
+            # position i predict token i+1 (shifted). In-place models: logits at i
+            # predict token i.
+            if self.backend.predicts_shifted:
+                gen_logits = logits[:, original_length:-1, :]        # z predicting i+1
+                target_tokens = input_ids[:, original_length + 1:]   # x_{i+1}
+            else:
+                gen_logits = logits[:, original_length:, :]          # z predicting i
+                target_tokens = input_ids[:, original_length:]       # x_i
 
-        log_probs = torch.log_softmax(gen_logits, dim=-1)
-        target_log_probs = log_probs.gather(dim=-1, index=target_tokens.unsqueeze(-1)).squeeze(-1)
+            non_mask = (target_tokens != mask_token_id)
+            if eos_token_id is not None:
+                non_mask = non_mask & (target_tokens != eos_token_id)
+            non_mask = non_mask.to(gen_logits.dtype)             # [B, gen_len(-1)]
 
-        if non_mask.sum() == 0:
-            max_log_probs, _ = log_probs.max(dim=-1)
-            return max_log_probs.sum()
+        n_t_row = non_mask.sum(dim=-1)                        # [B] per-row unmasked count
 
-        return (target_log_probs * non_mask).sum()
+        if self.score_mode == "meancentered":
+            z_actual = gen_logits.gather(dim=-1, index=target_tokens.unsqueeze(-1)).squeeze(-1)
+            z_mean = gen_logits.mean(dim=-1)
+            per_pos = (z_actual - z_mean) * non_mask          # zero masked positions
+            row_sum = per_pos.sum(dim=-1)                     # [B]
+            safe = n_t_row.clamp(min=1.0)                     # per-row 1/n_t
+            F_per_row = torch.where(n_t_row > 0, row_sum / safe, torch.zeros_like(row_sum))
+        elif self.score_mode == "logprob":
+            log_probs = torch.log_softmax(gen_logits, dim=-1)
+            lp_actual = log_probs.gather(dim=-1, index=target_tokens.unsqueeze(-1)).squeeze(-1)
+            F_per_row = (lp_actual * non_mask).sum(dim=-1)    # raw sum, no 1/n_t
+        else:
+            raise ValueError(f"Unknown score_mode: {self.score_mode}")
+
+        return F_per_row.sum() + 0.0 * gen_logits.sum()
 
     def _process_results(self, dlig_raw, original_length, step, activation_diff):
         if self.relevant_token_indices:
@@ -298,6 +380,104 @@ class DLIGAttribution:
         return self._process_results(dlig_raw.cpu(), original_length, step, activation_diff)
 
     # ------------------------------------------------------------------ #
+    #  Core DLIG: PARTIAL-FORWARD integration loop (suffix replay only)
+    # ------------------------------------------------------------------ #
+    def _run_integration_loop_partial(
+        self,
+        *,
+        x_t_local: torch.Tensor,
+        real_act: torch.Tensor,
+        baseline_act: torch.Tensor,
+        original_length: int,
+        step: int,
+    ) -> dict:
+        """
+        Identical math to _run_integration_loop, but the interpolated activations
+        are fed DIRECTLY into the decoder suffix (layers[start:] -> norm -> lm_head)
+        instead of re-running embed + prefix layers via a hook.
+
+        Correctness: the forward hook in the full path overwrites the hooked layer
+        output, so embed + prefix layers are fully discarded on the m-point batch.
+        Here we skip computing them entirely. x_t tokens are NOT needed in the
+        suffix (tokens only enter at the embedding, before the hooked layer), so
+        no x_rep / repeat is required.
+
+        Riemann sum (unchanged):
+          DLIG = (a - a') (.) (1/m) sum_{k=1..m} grad_a F( a' + (k/m)(a - a') )
+        """
+        act_device = real_act.device
+        act_dtype = real_act.dtype
+
+        baseline_act = baseline_act.to(device=act_device, dtype=act_dtype)
+        real_act = real_act.to(device=act_device, dtype=act_dtype)
+
+        activation_diff = real_act - baseline_act  # [B, S, H]
+        B, S, H = activation_diff.shape
+
+        grad_sum = torch.zeros_like(real_act)
+
+        m = int(self.integration_steps)
+        if m <= 0:
+            raise ValueError("integration_steps must be >= 1")
+
+        chunk = self.integration_batch_size
+        if chunk is None or chunk <= 0:
+            chunk = m
+
+        start_layer_idx = self._resolve_suffix_start()
+
+        chunk_idx = 0
+        for start in range(0, m, chunk):
+            end = min(m, start + chunk)
+            c = end - start
+            chunk_idx += 1
+
+            t_chunk0 = time.time() if self.enable_timing else None
+
+            # alpha_k = k/m for k in [start+1, end]
+            ks = torch.arange(start + 1, end + 1, device=act_device, dtype=act_dtype)
+            alphas = (ks / m).view(c, 1, 1, 1)
+
+            # interpolated_k = a' + alpha_k * (a - a')
+            interpolated = baseline_act.unsqueeze(0) + alphas * activation_diff.unsqueeze(0)  # [c,B,S,H]
+            interpolated = interpolated.detach().requires_grad_(True)
+            interpolated_flat = interpolated.reshape(c * B, S, H)
+
+            # Feed straight into the suffix; no hook, no embed, no prefix layers.
+            logits = self._suffix_forward(interpolated_flat, start_layer_idx)
+            outputs = _LogitsShim(logits)
+            # target_score = sum_k F(interp_k); grad wrt row k = grad_a F(interp_k).
+            # x_t tokens are NOT fed to the model here (tokens enter only at the
+            # embedding, before the hooked layer). But the scorer still indexes
+            # input_ids to pick target tokens (self-generated mode) -> tile x_t.
+            x_rep = x_t_local.repeat(c, 1)
+            target_score = self._compute_target_score(outputs, x_rep, original_length)
+
+            grads_flat = torch.autograd.grad(target_score, interpolated_flat, retain_graph=False)[0]
+            if chunk_idx == 1 and grads_flat.abs().max() < 1e-10:
+                print(
+                    f"⚠️  WARNING: Near-zero gradients at step {step}, first chunk. "
+                    f"Max grad magnitude: {grads_flat.abs().max().item():.2e}"
+                )
+            grads = grads_flat.reshape(c, B, S, H)
+            grad_sum += grads.detach().sum(dim=0)
+
+            del interpolated, interpolated_flat, grads_flat, grads, outputs, target_score, logits, x_rep
+
+            if self.enable_timing and (chunk_idx % self.timing_log_every_chunks == 0):
+                dt_chunk = time.time() - t_chunk0
+                print(
+                    f"[DLIG-TIMING] step={step} chunk={chunk_idx} k=[{start+1},{end}] c={c} "
+                    f"time={dt_chunk:.2f}s (partial, suffix@{start_layer_idx})",
+                    flush=True,
+                )
+
+        avg_gradients = (grad_sum / m).detach()
+        dlig_raw = activation_diff.detach() * avg_gradients
+
+        return self._process_results(dlig_raw.cpu(), original_length, step, activation_diff)
+
+    # ------------------------------------------------------------------ #
     #  NEW: accepts pre-computed activations (for multi-layer caching)
     # ------------------------------------------------------------------ #
     def compute_dlig_at_timestep_with_activations(
@@ -334,13 +514,22 @@ class DLIGAttribution:
         act_device = real_act.device
         x_t_local = x_t.to(act_device) if x_t.device != act_device else x_t
 
-        result = self._run_integration_loop(
-            x_t_local=x_t_local,
-            real_act=real_act,
-            baseline_act=baseline_act,
-            original_length=original_length,
-            step=step,
-        )
+        if getattr(self, "use_partial_forward", True):
+            result = self._run_integration_loop_partial(
+                x_t_local=x_t_local,
+                real_act=real_act,
+                baseline_act=baseline_act,
+                original_length=original_length,
+                step=step,
+            )
+        else:
+            result = self._run_integration_loop(
+                x_t_local=x_t_local,
+                real_act=real_act,
+                baseline_act=baseline_act,
+                original_length=original_length,
+                step=step,
+            )
 
         if self.enable_timing:
             dt_step = time.time() - t_step0

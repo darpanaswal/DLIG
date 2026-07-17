@@ -1,5 +1,5 @@
 torch==2.5.1
-transformers==4.46.2
+transformers==4.44.2
 accelerate
 huggingface_hub
 pandas
@@ -8,3 +8,4 @@ matplotlib
 requests
 python-dotenv
 datasets
+openai

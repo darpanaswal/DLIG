@@ -3,17 +3,22 @@
 Model loading and management utilities.
 """
 
+import os
 import torch
-from utils.config import MODEL_PATH
+from utils.config import DREAM_PATH, GPT_PATH
 from transformers import AutoModel, AutoTokenizer
 
 class ModelManager:
-    def __init__(self, model_path=str(MODEL_PATH), device_map="auto", torch_dtype="float32"):
+    def __init__(self, family="dream", device_map="auto", torch_dtype="float32"):
         """
-        Hyperparameters are now initialized here from main.py arguments.
+        family: 'dream' | 'diffugpt'. Controls how the model is loaded and sets the path.
+                'dream'   -> Uses DREAM_PATH. AutoModel.from_pretrained (trust_remote_code).
+                'diffugpt'-> Uses GPT_PATH. Plain GPT2LMHeadModel with full attention bias-patch.
         """
-        self.model_path = model_path
+        self.family = family.lower()
+        self.model_path = str(DREAM_PATH) if self.family == "dream" else str(GPT_PATH)
         self.device_map = device_map
+        
         # Convert string dtype to torch dtype
         if isinstance(torch_dtype, str):
             self.torch_dtype = getattr(torch, torch_dtype)
@@ -25,24 +30,133 @@ class ModelManager:
 
     def load_model_and_tokenizer(self):
         """Load the model and tokenizer for diffusion attribution."""
-        print(f"Loading model from {self.model_path}...")
-
-        self.model = AutoModel.from_pretrained(
-            self.model_path,
-            torch_dtype=self.torch_dtype,
-            device_map=self.device_map,
-            trust_remote_code=True,
-            local_files_only=True
-        ).eval()
+        print(f"Loading {self.family} model from {self.model_path}...")
 
         self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_path,
-            trust_remote_code=True,
-            local_files_only=True
+            self.model_path, trust_remote_code=True, local_files_only=True
         )
+
+        if self.family == "diffugpt":
+            self.model = self._load_diffugpt()
+        else:
+            self.model = AutoModel.from_pretrained(
+                self.model_path,
+                torch_dtype=self.torch_dtype,
+                device_map=self.device_map,
+                trust_remote_code=True,
+                local_files_only=True
+            ).eval()
 
         print("Model and tokenizer loaded successfully!")
         return self.model, self.tokenizer
+
+    def _load_diffugpt(self):
+        """
+        Load a DiffuGPT checkpoint into a GPT2LMHeadModel configured for FULL
+        bidirectional attention.
+
+        The checkpoint is HKUNLP's DiscreteDiffusionModel wrapper, so its state-dict
+        keys are prefixed and the embedding is split out:
+            denoise_model.{h.*, wpe, ln_f}   <- GPT2Model body (wte was deleted)
+            embed_tokens.weight              <- the token embedding (separated)
+            lm_head.weight                   <- output head
+        A plain GPT2LMHeadModel.from_pretrained CANNOT match these keys (it expects
+        transformer.h.*, transformer.wte, etc.) and silently random-inits everything.
+        So we instantiate the architecture from config and remap keys ourselves.
+
+        Mapping onto GPT2LMHeadModel:
+            denoise_model.h.*    -> transformer.h.*
+            denoise_model.wpe.*  -> transformer.wpe.*
+            denoise_model.ln_f.* -> transformer.ln_f.*
+            embed_tokens.weight  -> transformer.wte.weight   (and lm_head.weight)
+            lm_head.weight       -> lm_head.weight
+
+        Bidirectional recipe (validated, transformers 4.44.x): eager attention +
+        replace_attention_mask() + attn.bias.fill_(True) + 4D zero mask per block.
+        """
+        import glob
+        import utils.attention_patch as attention_patch  # provided in project; used as-is
+        attention_patch.replace_attention_mask()
+
+        from transformers import GPT2LMHeadModel, GPT2Config
+        from safetensors.torch import load_file
+
+        cfg = GPT2Config.from_pretrained(self.model_path, local_files_only=True)
+        # Build the model skeleton (eager so the bias buffer gates causality).
+        cfg._attn_implementation = "eager"
+        model = GPT2LMHeadModel(cfg)
+
+        # Load the wrapper state dict.
+        st = glob.glob(os.path.join(self.model_path, "*.safetensors"))
+        bn = glob.glob(os.path.join(self.model_path, "*.bin"))
+        if st:
+            raw = load_file(st[0])
+        elif bn:
+            raw = torch.load(bn[0], map_location="cpu")
+        else:
+            raise FileNotFoundError(f"No .safetensors/.bin in {self.model_path}")
+
+        # Vocab fix: DiffuGPT resized embeddings to add a mask token (HKUNLP:
+        # resize_token_embeddings(len(tokenizer), pad_to_multiple_of=2)), but the
+        # config's vocab_size was left at GPT-2's original 50257. The checkpoint's
+        # wte/lm_head therefore have MORE rows than the freshly-built model. Resize
+        # the model to the checkpoint's embedding size so the load matches exactly.
+        ckpt_vocab = None
+        for kk in ("embed_tokens.weight", "denoise_model.wte.weight",
+                   "transformer.wte.weight", "lm_head.weight"):
+            if kk in raw:
+                ckpt_vocab = raw[kk].shape[0]
+                break
+        if ckpt_vocab is not None and ckpt_vocab != model.get_input_embeddings().weight.shape[0]:
+            print(f"[INFO] Resizing embeddings {model.get_input_embeddings().weight.shape[0]} "
+                  f"-> {ckpt_vocab} to match DiffuGPT checkpoint (mask-token resize).")
+            model.resize_token_embeddings(ckpt_vocab)
+
+        # Remap keys: wrapper -> GPT2LMHeadModel.
+        remapped = {}
+        for k, v in raw.items():
+            if k.startswith("denoise_model."):
+                remapped["transformer." + k[len("denoise_model."):]] = v
+            elif k == "embed_tokens.weight":
+                remapped["transformer.wte.weight"] = v
+                # GPT-2 ties wte and lm_head; set head too unless an explicit head exists.
+                remapped.setdefault("lm_head.weight", v)
+            elif k == "lm_head.weight":
+                remapped["lm_head.weight"] = v
+            else:
+                # e.g. embed_tokens.* variants, or already-correct keys
+                remapped[k] = v
+
+        missing, unexpected = model.load_state_dict(remapped, strict=False)
+        # wte may be reported missing if only present via tie; verify the load really
+        # populated the body. If transformer.h.0 weights are missing, the remap failed.
+        critical = [m for m in missing if m.startswith("transformer.h.")
+                    or m in ("transformer.wte.weight", "transformer.wpe.weight",
+                             "transformer.ln_f.weight", "lm_head.weight")]
+        if critical:
+            raise RuntimeError(
+                f"DiffuGPT load failed to populate critical weights: {critical[:8]}... "
+                f"(total {len(critical)}). Key remap is wrong; inspect checkpoint keys."
+            )
+        if unexpected:
+            print(f"[WARN] {len(unexpected)} unexpected keys ignored "
+                  f"(e.g. {unexpected[:3]}).")
+        print(f"[INFO] DiffuGPT weights loaded: {len(remapped)-len(unexpected)} tensors "
+              f"mapped, {len(missing)} missing (non-critical).")
+
+        model = model.eval()
+        for block in model.transformer.h:
+            attn = block.attn
+            if hasattr(attn, "bias") and isinstance(attn.bias, torch.Tensor):
+                attn.bias.fill_(True)            # disable buffer causal mask
+
+        model = model.to(self.torch_dtype)
+        if self.device_map and self.device_map != "auto":
+            model = model.to(self.device_map)
+        elif torch.cuda.is_available():
+            model = model.to("cuda")
+
+        return model
 
     def get_model_device(self):
         """Get the device of the model."""

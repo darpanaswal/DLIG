@@ -69,19 +69,24 @@ class MultiLayerHookManager:
     that can be passed to DLIGAttribution without changing its intervention logic.
     """
 
-    def __init__(self, model, layer_specs: List[str], resolve_fn=None):
+    def __init__(self, model, layer_specs: List[str], resolve_fn=None, backend=None):
         """
         Args:
-            model: The model (e.g., Dream).
+            model: The model.
             layer_specs: List of layer identifiers (e.g., ["0", "7", "14", "21", "26"]).
             resolve_fn: Optional callable(model, layer_spec) -> nn.Module.
-                        If None, uses the default resolve logic.
+            backend: Optional ModelBackend; if given, its get_layer_module is used to
+                     resolve specs (family-agnostic). Takes precedence over the
+                     default resolver; ignored if resolve_fn is explicitly passed.
         """
         self.model = model
         self.layer_specs = list(layer_specs)
 
         if resolve_fn is None:
-            resolve_fn = self._default_resolve
+            if backend is not None:
+                resolve_fn = lambda m, spec: backend.get_layer_module(spec)
+            else:
+                resolve_fn = self._default_resolve
         self._resolve_fn = resolve_fn
 
         # Resolve all layer modules once

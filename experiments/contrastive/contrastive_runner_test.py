@@ -24,7 +24,7 @@ from utils.config import MODEL_PATH, OUTPUT_DIR
 from attribution.hook_manager import HookManager
 from attribution.dlig_attribution import DLIGAttribution
 from models.model_manager import ModelManager, GradientEnabledModel
-from experiments.contrastive_runner import (
+from experiments.contrastive.contrastive_runner import (
     PromptPair,
     build_default_pairs,
     make_messages,

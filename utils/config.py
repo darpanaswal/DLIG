@@ -16,8 +16,7 @@ mistral_token = os.getenv("MISTRAL_API_KEY")
 if not openai_token or not hf_token or not wandb_token:
     raise ValueError("API keys are not set in environment variables")
 
-MODEL_PATH = BASE_DIR / "models/Dream"
+DREAM_PATH = BASE_DIR / "models/Dream"
+GPT_PATH = BASE_DIR / "models/Diffugpt"
 OUTPUT_DIR = BASE_DIR / "outputs"
 CONTRAST_DATASET = BASE_DIR / "data/contrastive_dataset.json"
-CONTRAST_OUTPUT = OUTPUT_DIR / "contrastive"
-CONTRAST_PLOTS = CONTRAST_OUTPUT / "plots"
