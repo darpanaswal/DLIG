@@ -5,5 +5,5 @@ runs
 .env
 dlig
 Diffugpt
-diffugpt-m-prosqaoutputs/
-*.jsonl
+diffugpt-m-prosqa
+outputs/*.jsonl
