@@ -9,14 +9,18 @@ from utils.config import DREAM_PATH, GPT_PATH
 from transformers import AutoModel, AutoTokenizer
 
 class ModelManager:
-    def __init__(self, family="dream", device_map="auto", torch_dtype="float32"):
+    def __init__(self, family="dream", device_map="auto", torch_dtype="float32", model_path=None):
         """
         family: 'dream' | 'diffugpt'. Controls how the model is loaded and sets the path.
                 'dream'   -> Uses DREAM_PATH. AutoModel.from_pretrained (trust_remote_code).
                 'diffugpt'-> Uses GPT_PATH. Plain GPT2LMHeadModel with full attention bias-patch.
+        model_path: optional override, e.g. a fine-tuned checkpoint dir (such as a
+                    diffugpt family model saved outside GPT_PATH). Loading logic is
+                    still selected by `family`; only the on-disk path changes.
         """
         self.family = family.lower()
-        self.model_path = str(DREAM_PATH) if self.family == "dream" else str(GPT_PATH)
+        default_path = str(DREAM_PATH) if self.family == "dream" else str(GPT_PATH)
+        self.model_path = str(model_path) if model_path is not None else default_path
         self.device_map = device_map
         
         # Convert string dtype to torch dtype
@@ -32,9 +36,21 @@ class ModelManager:
         """Load the model and tokenizer for diffusion attribution."""
         print(f"Loading {self.family} model from {self.model_path}...")
 
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_path, trust_remote_code=True, local_files_only=True
-        )
+        if self.family == "diffugpt":
+            # The DiffuGPT checkpoint's tokenizer_config.json declares
+            # tokenizer_class "MaskTokenWrapper", a class that was never
+            # shipped with the checkpoint (and doesn't exist in transformers
+            # or this repo). The underlying files (vocab.json, merges.txt,
+            # tokenizer.json) are plain GPT-2 BPE, so load with the concrete
+            # GPT2 tokenizer class instead of AutoTokenizer.
+            from transformers import GPT2TokenizerFast
+            self.tokenizer = GPT2TokenizerFast.from_pretrained(
+                self.model_path, local_files_only=True
+            )
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_path, trust_remote_code=True, local_files_only=True
+            )
 
         if self.family == "diffugpt":
             self.model = self._load_diffugpt()

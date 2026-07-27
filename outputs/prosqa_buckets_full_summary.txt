@@ -1,0 +1,77 @@
+ProsQA bucketed task-level performance
+============================================================
+input : data/prosqa_eval_full.jsonl
+labels: outputs/prosqa_buckets_full.jsonl
+n=500  (option-parse fail: 0; subj mismatch: 85)
+
+Counts by bucket
+------------------------------------------------------------
+  correct         :  263  ( 52.6%)
+  concept_only    :   23  (  4.6%)
+  wrong_valid     :   69  ( 13.8%)
+  concept_invalid :   60  ( 12.0%)
+  subj_wrong      :   85  ( 17.0%)
+
+Groups (as used for DLIG contrastive filtering)
+------------------------------------------------------------
+  success (correct U concept_only):  286  (57.2%)
+  fail    (wrong_valid)           :   69  (13.8%)
+  off     (subj_wrong+concept_inv):  145  (29.0%)
+
+Bucket definitions & examples
+============================================================
+
+[correct]
+Exact string match on the gold answer: predicted subject and option both match, and the generated answer sentence matches the gold wording verbatim.
+  example (idx=1):
+    question (tail): ...s a vumpus. Every zumpus is a hilpus. Every storpus is a grimpus. Every worpus is a zhorpus. Is Bob a shumpus or gerpus?
+    gold            : Bob is a shumpus.
+    gen             : Bob is a yerpus. Every yerpus is a zumpusus. ### Bob is a shumpus.
+    pred_answer     : Bob is a shumpus
+    q_subject=bob  pred_subject=bob  subj_match=True
+    options=['shumpus', 'gerpus']  predicted_option=shumpus  answer_valid=True
+    exact_match=True  concept_match=True
+
+[concept_only]
+Right subject, right option (A/B), but not a verbatim match -- extra text or formatting (e.g. stray '###' markers) around an otherwise correct answer makes it fail strict exact-match while still being conceptually correct.
+  example (idx=34):
+    question (tail): ... a quimpus. Every boompus is a yimpus. Every worpus is a gwompus. Every gorpus is a brimpus. Is Bob a numpus or gwompus?
+    gold            : Bob is a numpus.
+    gen             : Bob is a gorpus. Every gorpus is a grimpus. Every grus is a a sterpus. Every sterpus is a numpus. ### ### Bob is a numpus.
+    pred_answer     : ### Bob is a numpus
+    q_subject=bob  pred_subject=bob  subj_match=True
+    options=['numpus', 'gwompus']  predicted_option=numpus  answer_valid=True
+    exact_match=False  concept_match=True
+
+[wrong_valid]
+Right subject, and the model committed to one of the two offered options, but picked the wrong one. A genuine reasoning error, not a parsing failure.
+  example (idx=4):
+    question (tail): ...y gwompus is a storpus. Every sterpus is a impus. Every storpus is a lorpus. Rex is a jelpus. Is Rex a rompus or lempus?
+    gold            : Rex is a rompus.
+    gen             : Rex is a jelp. Every jelpus is a tumpus. Every tumpus is a wump. Every wumpus is a lempus. ### Rex is a real lempus.
+    pred_answer     : Rex is a real lempus
+    q_subject=rex  pred_subject=rex  subj_match=True
+    options=['rompus', 'lempus']  predicted_option=lempus  answer_valid=True
+    exact_match=False  concept_match=False
+
+[concept_invalid]
+Right subject, but the predicted concept is not even one of the two offered options -- the reasoning chain derailed into an unrelated category, so there is no valid option to score as right or wrong.
+  example (idx=3):
+    question (tail): ...orpus is a vumpus. Every bompus is a vumpus. Every bompus is a sterpus. Davis is a vumpus. Is Davis a worpus or chorpus?
+    gold            : Davis is a worpus.
+    gen             : Davis is a lorpus. Every lorpus is a numpus. ### Davis is a numpus. Every nump is a worpus. ### Davis is a worpus.
+    pred_answer     : Davis is a numpus
+    q_subject=davis  pred_subject=davis  subj_match=True
+    options=['worpus', 'chorpus']  predicted_option=None  answer_valid=False
+    exact_match=False  concept_match=False
+
+[subj_wrong]
+The model's final sentence names a different (or malformed) subject than the one asked about, so whatever concept it landed on is coincidental -- gated to this bucket regardless of whether the option happens to be correct.
+  example (idx=0):
+    question (tail): ...s a lempus. Every worpus is a storpus. Every rorpus is a impus. Every boompus is a gerpus. Is Sally a hilpus or sterpus?
+    gold            : Sally is a sterpus.
+    gen             : Sally is a boompus. Every boompus is a remusus. Every remusus is a sterpus. Every Sally is a sterpus.
+    pred_answer     : Every Sally is a sterpus.
+    q_subject=sally  pred_subject=every  subj_match=False
+    options=['hilpus', 'sterpus']  predicted_option=sterpus  answer_valid=True
+    exact_match=False  concept_match=True

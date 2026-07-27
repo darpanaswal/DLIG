@@ -10,6 +10,8 @@ WALLTIME="02:00:00"
 
 # --- Model selection ---
 FAMILY="diffugpt"                            # dream | diffugpt
+MODEL_PATH="models/diffugpt-m-prosqa"        # override checkpoint dir; leave "" for the
+                                              # family default (DREAM_PATH/GPT_PATH)
 
 # --- Python Script Arguments ---
 TORCH_DTYPE="float32"
@@ -49,6 +51,7 @@ source dlig/bin/activate
 > "${LOG_FILE}"
 echo "Experiment        : ${EXPERIMENT}"
 echo "Family            : ${FAMILY}"
+echo "Model Path        : ${MODEL_PATH:-[family default]}"
 echo "Dtype             : ${TORCH_DTYPE}"
 echo "Layer             : ${LAYER}"
 echo "Gen Steps         : ${GEN_STEPS}"
@@ -64,6 +67,13 @@ CMD=(
     python -u -m experiments.theorems.verify_completeness
     --family "${FAMILY}"
     --torch_dtype "${TORCH_DTYPE}"
+)
+
+if [ -n "${MODEL_PATH:-}" ]; then
+    CMD+=(--model_path "${MODEL_PATH}")
+fi
+
+CMD+=(
     --layer "${LAYER}"
     --prompt "${PROMPT}"
     --system "${SYSTEM_PROMPT}"

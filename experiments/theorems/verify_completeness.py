@@ -321,6 +321,10 @@ def build_arg_parser():
     p.add_argument("--family", type=str, default="dream",
                    choices=["dream", "diffugpt"],
                    help="Model family / backend.")
+    p.add_argument("--model_path", type=str, default=None,
+                   help="Override checkpoint dir (e.g. a fine-tuned diffugpt "
+                        "checkpoint such as models/diffugpt-m-prosqa). Defaults "
+                        "to DREAM_PATH/GPT_PATH from utils.config based on --family.")
     p.add_argument("--seed", type=int, default=0)
     return p
 
@@ -426,9 +430,10 @@ def main():
     
     # Simplified instantiation
     mm = ModelManager(
-        family=args.family, 
+        family=args.family,
         device_map=args.device_map,
-        torch_dtype=args.torch_dtype
+        torch_dtype=args.torch_dtype,
+        model_path=args.model_path,
     )
     
     model, tokenizer = mm.load_model_and_tokenizer()

@@ -24,10 +24,39 @@ Contrast for DLIG:
     DROP    = off_manifold
 """
 
+import os
 import re
 import json
 import argparse
 from collections import Counter
+
+
+BUCKET_EXPLANATIONS = {
+    "correct": (
+        "Exact string match on the gold answer: predicted subject and option both "
+        "match, and the generated answer sentence matches the gold wording verbatim."
+    ),
+    "concept_only": (
+        "Right subject, right option (A/B), but not a verbatim match -- extra text "
+        "or formatting (e.g. stray '###' markers) around an otherwise correct answer "
+        "makes it fail strict exact-match while still being conceptually correct."
+    ),
+    "wrong_valid": (
+        "Right subject, and the model committed to one of the two offered options, "
+        "but picked the wrong one. A genuine reasoning error, not a parsing failure."
+    ),
+    "subj_wrong": (
+        "The model's final sentence names a different (or malformed) subject than "
+        "the one asked about, so whatever concept it landed on is coincidental -- "
+        "gated to this bucket regardless of whether the option happens to be correct."
+    ),
+    "concept_invalid": (
+        "Right subject, but the predicted concept is not even one of the two offered "
+        "options -- the reasoning chain derailed into an unrelated category, so there "
+        "is no valid option to score as right or wrong."
+    ),
+}
+BUCKET_ORDER = ("correct", "concept_only", "wrong_valid", "concept_invalid", "subj_wrong")
 
 
 def final_concept(s):
@@ -101,6 +130,61 @@ def label_row(row, idx):
     }
 
 
+def summary_path_for(out_file: str) -> str:
+    root, _ext = os.path.splitext(out_file)
+    return f"{root}_summary.txt"
+
+
+def write_summary(summary_file, in_file, out_file, n, counts, examples,
+                   n_unparsed, n_subjfail):
+    success = counts["correct"] + counts["concept_only"]
+    fail    = counts["wrong_valid"]
+    off     = counts["subj_wrong"] + counts["concept_invalid"]
+
+    lines = []
+    lines.append("ProsQA bucketed task-level performance")
+    lines.append("=" * 60)
+    lines.append(f"input : {in_file}")
+    lines.append(f"labels: {out_file}")
+    lines.append(f"n={n}  (option-parse fail: {n_unparsed}; subj mismatch: {n_subjfail})")
+    lines.append("")
+    lines.append("Counts by bucket")
+    lines.append("-" * 60)
+    for b in BUCKET_ORDER:
+        pct = 100 * counts[b] / n if n else 0.0
+        lines.append(f"  {b:16}: {counts[b]:4}  ({pct:5.1f}%)")
+    lines.append("")
+    lines.append("Groups (as used for DLIG contrastive filtering)")
+    lines.append("-" * 60)
+    lines.append(f"  success (correct U concept_only): {success:4}  ({100*success/n:.1f}%)" if n else "  success: 0")
+    lines.append(f"  fail    (wrong_valid)           : {fail:4}  ({100*fail/n:.1f}%)" if n else "  fail: 0")
+    lines.append(f"  off     (subj_wrong+concept_inv): {off:4}  ({100*off/n:.1f}%)" if n else "  off: 0")
+    lines.append("")
+    lines.append("Bucket definitions & examples")
+    lines.append("=" * 60)
+    for b in BUCKET_ORDER:
+        lines.append(f"\n[{b}]")
+        lines.append(BUCKET_EXPLANATIONS[b])
+        ex = examples.get(b)
+        if ex is not None:
+            q_tail = ex["question"][-120:]
+            lines.append(f"  example (idx={ex['idx']}):")
+            lines.append(f"    question (tail): ...{q_tail}")
+            lines.append(f"    gold            : {ex['gold']}")
+            lines.append(f"    gen             : {ex['gen']}")
+            lines.append(f"    pred_answer     : {ex['pred_answer']}")
+            lines.append(f"    q_subject={ex['q_subject']}  pred_subject={ex['pred_subject']}  "
+                          f"subj_match={ex['subj_match']}")
+            lines.append(f"    options={ex['options']}  predicted_option={ex['predicted_option']}  "
+                          f"answer_valid={ex['answer_valid']}")
+            lines.append(f"    exact_match={ex['exact_match']}  concept_match={ex['concept_match']}")
+        else:
+            lines.append("  (no example in this run)")
+
+    with open(summary_file, "w") as f:
+        f.write("\n".join(lines) + "\n")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in_file",  required=True)
@@ -108,6 +192,7 @@ def main():
     args = ap.parse_args()
 
     counts = Counter()
+    examples = {}
     n = n_unparsed = n_subjfail = 0
     with open(args.in_file) as fin, open(args.out_file, "w") as fout:
         for i, line in enumerate(fin):
@@ -121,6 +206,7 @@ def main():
             if not lab["subj_match"]:
                 n_subjfail += 1
             counts[lab["bucket"]] += 1
+            examples.setdefault(lab["bucket"], lab)
             n += 1
             fout.write(json.dumps(lab) + "\n")
 
@@ -129,12 +215,17 @@ def main():
     off     = counts["subj_wrong"] + counts["concept_invalid"]
 
     print(f"[BUCKET] n={n}  (option-parse fail: {n_unparsed}; subj mismatch: {n_subjfail})")
-    for b in ("correct", "concept_only", "wrong_valid", "concept_invalid", "subj_wrong"):
+    for b in BUCKET_ORDER:
         print(f"  {b:16}: {counts[b]:4}  ({100*counts[b]/n:5.1f}%)")
     print(f"[GROUP] success(correct U concept_only): {success} ({100*success/n:.1f}%)")
     print(f"[GROUP] fail   (wrong_valid)           : {fail} ({100*fail/n:.1f}%)")
     print(f"[GROUP] off    (subj_wrong+concept_inv): {off} ({100*off/n:.1f}%)")
     print(f"  labels -> {args.out_file}")
+
+    summary_file = summary_path_for(args.out_file)
+    write_summary(summary_file, args.in_file, args.out_file, n, counts, examples,
+                   n_unparsed, n_subjfail)
+    print(f"  summary -> {summary_file}")
 
 
 if __name__ == "__main__":

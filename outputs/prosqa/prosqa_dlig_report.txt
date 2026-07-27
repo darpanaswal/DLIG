@@ -1,0 +1,42 @@
+ProsQA contrastive DLIG analysis  (n=355)
+============================================================
+
+(A) Path precision (success group, pooled layers/steps)
+    mean prec-chance gap : +0.1374  (n=286; Wilcoxon p=0.00e+00)
+    random-edge null gap : mean -0.0242, 95th pct +0.0754
+
+(B) Failure faithfulness (fail group, behavior-aligned d)
+    per-token mass  chain\gold: +2.2334   gold\chain: +2.5040  (n=38)
+    paired Wilcoxon (chain\gold - gold\chain): mean -0.2706  p=7.44e-01
+    [unpaired ref] P(chain > gold) AUC=0.549  p=4.61e-01
+    all-fails CHAIN vs FACT\CHAIN (n=61): mean +2.6535  Wilcoxon p=1.88e-07
+    success mirror GOLD vs FACT\GOLD (n=286): mean +1.6275  Wilcoxon p=0.00e+00
+    success control (chain-gold gap): +0.1106
+
+(C) Context-reliance predicts correctness
+    per-token |d| mass  success: 2.2012   fail: 2.7232
+    AUC(success vs fail) = 0.404  p=1.33e-02
+    confound check  Spearman(mass, k_gold)=+0.064   Spearman(mass, n_edges)=-0.349
+    k-matched AUC (mass -> correctness within k):
+      k=2: AUC=0.369  p=5.55e-02  (n=99+22)
+      k=3: AUC=0.343  p=6.07e-03  (n=114+33)
+      k=4: AUC=0.595  p=2.85e-01  (n=63+13)
+      weighted avg AUC = 0.408
+    logistic  correctness ~ mass + k_gold + n_edges (standardized):
+      beta[mass] = -0.376  Wald p=6.61e-03
+      beta[k_gold] = +0.077  Wald p=5.71e-01
+      beta[n_edges] = -0.047  Wald p=7.49e-01
+    per-step AUC (per-example, layer-averaged):
+      t= 1: AUC=0.419  p=3.58e-02
+      t= 3: AUC=0.404  p=1.35e-02
+      t= 5: AUC=0.405  p=1.42e-02
+      t= 7: AUC=0.416  p=2.99e-02
+      t= 9: AUC=0.405  p=1.48e-02
+      t=11: AUC=0.402  p=1.18e-02
+
+(E) Attribution LOCATION predicts correctness
+    precision gap  success: +0.1374   fail: +0.1346
+    AUC(success vs fail) = 0.512  p=7.50e-01
+    logistic  correctness ~ precision + mass (standardized):
+      beta[precision] = -0.023  Wald p=8.69e-01
+      beta[mass] = -0.356  Wald p=4.87e-03

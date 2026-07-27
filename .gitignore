@@ -3,7 +3,7 @@ Dream
 push.sh
 runs
 .env
-outputs
 dlig
 Diffugpt
-diffugpt-m-prosqa
+diffugpt-m-prosqaoutputs/
+*.jsonl
