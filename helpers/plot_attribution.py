@@ -6,12 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import argparse
-import re
-import nltk
-from nltk.corpus import stopwords
-
-nltk.download('stopwords', quiet=True)
-STOPWORDS = set(stopwords.words('english'))
 
 # Paper-figure defaults: figures render at single-column width (~3.3in), so
 # fonts must be large relative to the canvas. No in-figure titles -- captions
@@ -333,8 +327,10 @@ def main():
                         help="How to collapse per-layer DLIG into one score per position.")
     parser.add_argument("--min_count", type=int, default=5,
                         help="infill: drop distance bins with fewer samples.")
-    parser.add_argument("--split_rouge", type=float, default=None,
-                        help="infill: ROUGE-1 threshold to split high/low-quality infills.")
+    parser.add_argument("--split_rouge", type=str, default=None,
+                        help="infill: ROUGE-1 threshold to split high/low-quality "
+                             "infills. Pass a float, or 'median' to compute the "
+                             "per-story median from the input file.")
     parser.add_argument("--raw", action="store_true",
                         help="infill: do NOT per-story normalize (keep meancentered magnitudes "
                              "so group magnitude differences survive).")
@@ -359,6 +355,20 @@ def main():
     input_file = args.input_file or os.path.join(
         args.out_dir,
         f"{args.family.lower()}_rocstories_infill_attribution_{args.target_mode}.jsonl")
+
+    # resolve --split_rouge: float, or 'median' computed over stories in the file
+    if args.split_rouge is not None:
+        if str(args.split_rouge).lower() == "median":
+            r1s = []
+            with open(input_file) as f:
+                for line in f:
+                    if line.strip():
+                        r1s.append(json.loads(line).get("rouge1", 0.0))
+            args.split_rouge = float(np.median(r1s))
+            print(f"[INFO] split_rouge=median resolved to {args.split_rouge:.4f} "
+                  f"over {len(r1s)} stories")
+        else:
+            args.split_rouge = float(args.split_rouge)
 
     norm_tag = "_raw" if args.raw else ""
     tail_tag = f"_tail{args.tail_min}" if args.tail_min else ""

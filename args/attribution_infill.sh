@@ -4,7 +4,7 @@ set -euo pipefail
 ########################################
 # CONFIGURE RUN PROPERTIES
 ########################################
-TARGET_MODE="self"                    # self (primary) | gold (appendix robustness)
+TARGET_MODE="gold"                    # self (primary) | gold (appendix robustness)
 EXPERIMENT="run_infill_attribution_${TARGET_MODE}"
 N_GPUS=4
 WALLTIME="12:00:00"
