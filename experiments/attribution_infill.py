@@ -199,9 +199,14 @@ def build_arg_parser():
     p.add_argument("--gen_steps", type=int, default=12,
                    help="Diffusion denoising steps T for the infill span.")
     p.add_argument("--target_steps", type=int, nargs="+", default=[1, 3, 5, 7, 9, 11],
-                   help="Which recorded denoising steps to attribute at. Target stays "
-                        "fixed to gold s3 across steps (attribution toward the correct "
-                        "answer as the span commits).")
+                   help="Which recorded denoising steps to attribute at.")
+    p.add_argument("--target_mode", type=str, default="self",
+                   choices=["self", "gold"],
+                   help="'self' (primary): F_t scores the model's own committed span "
+                        "tokens at each step (masks excluded), matching the method's "
+                        "default framing; no oracle completion enters the score. "
+                        "'gold': fixed target = gold sentence 3 held constant across "
+                        "steps (robustness / appendix design).")
     p.add_argument("--layers", type=str, nargs="+",
                    default=[str(i) for i in range(0, 26, 2)])
     p.add_argument("--score_mode", type=str, default="meancentered",
@@ -251,13 +256,24 @@ def main():
     )
 
     # ---- resume ----
+    # Check both this shard's file AND the merged combined file: after the .sh
+    # consolidation phase the shard files are deleted, so a restart must not
+    # recompute stories that already live in the merged output.
     processed = set()
-    if os.path.exists(args.out_file):
-        with open(args.out_file, "r") as f:
-            for line in f:
-                if line.strip():
-                    processed.add(json.loads(line)["story_id"])
-        print(f"[INFO] Resuming; {len(processed)} stories already done.")
+    resume_files = [args.out_file]
+    if args.num_shards > 1:
+        resume_files.append(str(Path(args.out_file).parent /
+                                f"{Path(args.out_file).stem.rsplit('_shard', 1)[0]}"
+                                f"{Path(args.out_file).suffix}"))
+    for rf in resume_files:
+        if os.path.exists(rf):
+            with open(rf, "r") as f:
+                for line in f:
+                    if line.strip():
+                        processed.add(json.loads(line)["story_id"])
+    if processed:
+        print(f"[INFO] Resuming; {len(processed)} stories already done "
+              f"(checked: {resume_files}).")
 
     for sidx, sents in enumerate(tqdm(stories, desc=f"infill shard {args.shard_id}")):
         story_id = f"{args.shard_id}:{sidx}"
@@ -294,15 +310,23 @@ def main():
         x_t = torch.cat([left_ids, mask_block, right_ids], dim=1)  # [1, L_total]
 
         # ----------------------------------------------------------------- #
-        # DLIG fixed target = gold sentence 3 at the gap.
-        # The contrastive-target path scores logits[:, L : L+score_len] against
-        # target_output_ids, where L == original_input_length. So we must set
-        # original_input_length = gap_start, and provide target = gold span.
-        # Attribution from _process_results is sliced to [:, :L, :] = LEFT context
-        # ONLY. To also capture RIGHT context we read full_dlig over all positions
-        # by setting relevant_token_indices to the full context index set.
+        # Target framing.
+        #   gold: fixed target = gold sentence 3 at the gap. The contrastive-
+        #         target path scores logits[:, L : L+score_len] against
+        #         target_output_ids with L == original_input_length = gap_start.
+        #   self: target_output_ids = None -> the self-generated path scores the
+        #         span tokens the model has committed at THIS step (masks
+        #         excluded). score_window restricts scoring to the gap so the
+        #         fixed right context is never scored.
+        # Attribution from _process_results is sliced to relevant_token_indices,
+        # which we set to the full context index set (both sides of the gap).
         # ----------------------------------------------------------------- #
-        dlig.target_output_ids = gold_ids.squeeze(0)            # [span_len]
+        if args.target_mode == "gold":
+            dlig.target_output_ids = gold_ids.squeeze(0)        # [span_len]
+            dlig.score_window = None
+        else:  # "self"
+            dlig.target_output_ids = None
+            dlig.score_window = (gap_start, gap_end)
         dlig.set_original_input_length(gap_start)
 
         # context positions to attribute over = everything EXCEPT the gap:
@@ -337,6 +361,7 @@ def main():
         story_result = {
             "story_id": story_id,
             "label": "rocstories_infill",
+            "target_mode": args.target_mode,
             "n_left": n_left, "n_right": n_right, "span_len": span_len,
             "gold_s3": s3,
             "rouge1": rouge1,
@@ -346,14 +371,34 @@ def main():
         }
 
         # ---- attribute at each requested denoising step ---- #
-        # Target stays FIXED to gold s3 across all steps: this measures how
-        # attribution toward the correct answer flows from context as the span
-        # progressively commits. (relevant_token_indices / target_output_ids /
-        # original_length were set once above and hold for every step.)
+        # gold: target stays FIXED to gold s3 across steps.
+        # self: F_t at each step scores the span tokens committed SO FAR (a
+        #       moving quantity); n_committed is logged per step so downstream
+        #       analysis can filter or weight early steps (n_committed=0 =>
+        #       F=0 => zero attribution, drop those cells).
         for step in args.target_steps:
             if step not in rec.x_by_step:
                 continue
             x_step = rec.x_by_step[step].to(device)
+            n_committed = int((x_step[0, gap_start:gap_end] != mask_token_id).sum().item())
+
+            # Degenerate-step guard (self mode): if no committed span token is
+            # scoreable, F == 0 identically -> all gradients are exactly zero
+            # -> DLIG is a zero tensor. Skip the integration entirely and mark
+            # the step; downstream analysis drops these cells via n_scoreable.
+            # Under predicts_shifted the first span position (gap_start) has no
+            # in-slice logit and cannot be scored, so it is excluded from the
+            # scoreable count.
+            if args.target_mode == "self":
+                score_lo = gap_start + 1 if backend.predicts_shifted else gap_start
+                n_scoreable = int((x_step[0, score_lo:gap_end] != mask_token_id).sum().item())
+            else:
+                n_scoreable = span_len          # gold target: always scoreable
+            if n_scoreable == 0:
+                story_result["steps_data"].append(
+                    {"step": step, "n_committed": n_committed,
+                     "n_scoreable": 0, "skipped": True, "layers": {}})
+                continue
 
             # baseline for THIS step: mask the full context, keep the span state
             # (revealed-so-far tokens + remaining masks) identical.
@@ -365,7 +410,8 @@ def main():
                 real_acts = mlhm.capture_activations(x_step, disable_kv_cache=True)
                 baseline_acts = mlhm.capture_activations(baseline_step, disable_kv_cache=True)
 
-            step_data = {"step": step, "layers": {}}
+            step_data = {"step": step, "n_committed": n_committed,
+                         "n_scoreable": n_scoreable, "layers": {}}
             for layer in valid_layers:
                 dlig.hook_manager = mlhm.get_layer_view(layer)
                 res = dlig.compute_dlig_at_timestep_with_activations(

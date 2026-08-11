@@ -62,6 +62,12 @@ class DLIGAttribution:
         self.dlig_scores = []
         self.original_input_length = None
         self.relevant_token_indices = []
+        # Optional absolute-position scoring window (start, end) for the
+        # SELF-GENERATED target path: positions outside [start, end) get zero
+        # weight in F_t. Used by infilling, where the generated region is a
+        # middle span and everything right of it is fixed context that must
+        # not be scored. None = score all positions >= original_length.
+        self.score_window = None
 
         # For activation manipulation
         self.interpolated_activations = None
@@ -260,6 +266,17 @@ class DLIGAttribution:
             if eos_token_id is not None:
                 non_mask = non_mask & (target_tokens != eos_token_id)
             non_mask = non_mask.to(gen_logits.dtype)             # [B, gen_len(-1)]
+
+            # Optional scoring window (absolute positions in the sequence):
+            # zero out weight outside [w_start, w_end). target_tokens[:, j] sits
+            # at absolute position offset + j, where offset follows the shift
+            # convention used to build target_tokens above.
+            if getattr(self, "score_window", None) is not None:
+                w_start, w_end = self.score_window
+                offset = original_length + 1 if self.backend.predicts_shifted else original_length
+                pos = torch.arange(target_tokens.shape[1], device=gen_logits.device) + offset
+                in_win = ((pos >= w_start) & (pos < w_end)).to(gen_logits.dtype)
+                non_mask = non_mask * in_win.unsqueeze(0)
 
         n_t_row = non_mask.sum(dim=-1)                        # [B] per-row unmasked count
 

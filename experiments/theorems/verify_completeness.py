@@ -205,6 +205,7 @@ def check_step(
     chunk: int,
     device: torch.device,
     rtol: float,
+    atol: float,
 ):
     print("\n" + "=" * 78)
     print(f"STEP t={step}   layer={layer}")
@@ -257,6 +258,8 @@ def check_step(
     print("\n[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF")
     print(f"    {'m':>5}  {'sumDLIG':>14}  {'deltaF':>14}  {'abs_err':>11}  {'rel_err':>11}")
     last_rel = None
+    last_abs = None
+    rel_by_m = []
     for m in m_list:
         dlig_raw = integrate_dlig_full(
             dlig, x_t, real_act, baseline_act, original_length, m=m, chunk=chunk
@@ -265,15 +268,28 @@ def check_step(
         abs_err = abs(sum_dlig - dF)
         rel_err = abs_err / denom
         last_rel = rel_err
+        last_abs = abs_err
+        rel_by_m.append(rel_err)
         print(f"    {m:>5}  {sum_dlig:>14.6f}  {dF:>14.6f}  {abs_err:>11.3e}  {rel_err:>11.3e}")
         del dlig_raw
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    completeness_ok = (last_rel is not None) and (last_rel < rtol)
+    # Combined (allclose-style) tolerance at max m:
+    #     |sum DLIG - deltaF| <= atol + rtol * |deltaF|
+    # Pure relative error diverges as deltaF -> 0 while the Riemann discretization
+    # error is set by path curvature, not by deltaF; atol absorbs that regime.
+    completeness_ok = (last_abs is not None) and (last_abs <= atol + rtol * abs(dF))
     print(f"    -> completeness at max m: {'PASS' if completeness_ok else 'FAIL'} "
-          f"(rel_err={last_rel:.3e} vs rtol={rtol:.1e})")
+          f"(abs_err={last_abs:.3e} vs atol+rtol*|dF|={atol + rtol * abs(dF):.3e})")
+
+    # Convergence: rel_err must not grow as m increases (per-cell integrator check).
+    converging = None
+    if len(rel_by_m) > 1:
+        converging = all(b <= a for a, b in zip(rel_by_m, rel_by_m[1:]))
+        print(f"    -> convergence in m: {'PASS' if converging else 'FAIL'} "
+              f"(rel_err {' -> '.join(f'{r:.3e}' for r in rel_by_m)})")
 
     del real_act, baseline_act, baseline_inp, x_t
     gc.collect()
@@ -286,6 +302,9 @@ def check_step(
         "transparency_ok": transparency_ok,
         "completeness_ok": completeness_ok,
         "rel_err": last_rel,
+        "abs_err": last_abs,
+        "dF": dF,
+        "converging": converging,
     }
 
 
@@ -311,7 +330,11 @@ def build_arg_parser():
     p.add_argument("--integration_batch_size", type=int, default=5,
                    help="Chunk size over integration points (VRAM control). 0 => full batch.")
     p.add_argument("--rtol", type=float, default=1e-2,
-                   help="rel_err threshold at max m for completeness PASS.")
+                   help="Relative term of the combined tolerance at max m.")
+    p.add_argument("--atol", type=float, default=5e-3,
+                   help="Absolute term of the combined tolerance: PASS iff "
+                        "abs_err <= atol + rtol*|deltaF|. Guards against rel_err "
+                        "blow-up when deltaF is near zero (small-denominator cells).")
     p.add_argument("--score_mode", type=str, default="meancentered",
                    choices=["meancentered", "logprob"],
                    help="F_t scoring fn. 'meancentered' (bounded readout) is the "
@@ -516,6 +539,7 @@ def main():
                     chunk=chunk,
                     device=device,
                     rtol=args.rtol,
+                    atol=args.atol,
                 )
             )
     finally:
@@ -533,14 +557,20 @@ def main():
         tag = " (degenerate, fallback F)" if r["degenerate"] else ""
         comp = "n/a" if r["degenerate"] else ("PASS" if r["completeness_ok"] else "FAIL")
         trans = "PASS" if r["transparency_ok"] else "FAIL"
+        conv = "" if r["converging"] is None else \
+            f"  conv={'PASS' if r['converging'] else 'FAIL'}"
         print(f"  step {r['step']}: transparency={trans}  completeness={comp}  "
-              f"rel_err={r['rel_err']:.3e}{tag}")
+              f"abs_err={r['abs_err']:.3e}  rel_err={r['rel_err']:.3e}  "
+              f"dF={r['dF']:.4f}{conv}{tag}")
         if not r["transparency_ok"]:
             all_pass = False
         if (not r["degenerate"]) and (not r["completeness_ok"]):
             all_pass = False
+        if (not r["degenerate"]) and (r["converging"] is False):
+            all_pass = False
     print(f"\n  OVERALL: {'PASS - implementation verified' if all_pass else 'FAIL - see above'}")
-    print("  Expected on PASS: rel_err strictly DECREASES as m grows toward 0.")
+    print("  PASS criterion: abs_err <= atol + rtol*|dF| at max m, and rel_err "
+          "non-increasing in m when multiple m are swept.")
 
 
 if __name__ == "__main__":
