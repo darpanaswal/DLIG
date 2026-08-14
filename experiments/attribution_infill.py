@@ -183,7 +183,7 @@ def build_arg_parser():
     p.add_argument("--dataset", type=str,
                    default=str(OUTPUT_DIR.parent / "data/rocstories_test.jsonl"))
     p.add_argument("--out_file", type=str,
-                   default=str(OUTPUT_DIR / "absolute/rocstories_infill_attribution.jsonl"))
+                   default=str(OUTPUT_DIR / "infill_attribution/rocstories_infill_attribution.jsonl"))
 
     p.add_argument("--num_shards", type=int, default=1)
     p.add_argument("--shard_id", type=int, default=0)

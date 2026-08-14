@@ -16,7 +16,7 @@ ProsQA contrastive DLIG analysis  (n=355)
 (C) Context-reliance predicts correctness
     per-token |d| mass  success: 2.2012   fail: 2.7232
     AUC(success vs fail) = 0.404  p=1.33e-02
-    confound check  Spearman(mass, k_gold)=+0.064   Spearman(mass, n_edges)=-0.349
+    confound check  Spearman(mass, k_gold)=+0.007   Spearman(mass, n_edges)=-0.345
     k-matched AUC (mass -> correctness within k):
       k=2: AUC=0.369  p=5.55e-02  (n=99+22)
       k=3: AUC=0.343  p=6.07e-03  (n=114+33)

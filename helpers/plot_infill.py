@@ -1,4 +1,4 @@
-# utils/plot_absolute_attribution.py
+# helpers/plot_infill.py
 import os
 import json
 import math
@@ -19,7 +19,6 @@ plt.rcParams.update({
     "legend.fontsize": 13,
     "axes.titlesize": 16,
 })
-
 
 # layer aggregation: collapse the per-layer DLIG into one score per position
 #   sum  : total attribution mass routed through that position (all depth)
@@ -103,20 +102,22 @@ def aggregate_infill(input_file, layer_agg="sum", split_rouge=None,
                 if sd.get("skipped", False) or sd.get("n_scoreable", None) == 0:
                     continue
                 n_scoreable = sd.get("n_scoreable", None)
-                pos = _collapse_layers(layers_dict, n, mode=layer_agg)
-                pos = np.abs(pos)
-                if np.max(pos) == 0.0:
+                pos_raw = np.abs(_collapse_layers(layers_dict, n, mode=layer_agg))
+                if np.max(pos_raw) == 0.0:
                     continue                    # all-zero cell (old-format degenerate)
-                if normalize:
-                    pos = pos / np.max(pos)
+                # Profile curves use shape-normalized scores when requested;
+                # per-story masses are ALWAYS computed on raw magnitudes so the
+                # mass-vs-quality analyses are magnitude analyses regardless of
+                # the profile normalization flag.
+                pos = pos_raw / np.max(pos_raw) if normalize else pos_raw
 
                 # per-story scalar: left vs right context mass (tail only, excludes
                 # the boundary spike so it measures genuine context use)
                 tmask = np.abs(sdist_arr) >= max(tail_min, 1)
                 left_mask = tmask & (sdist_arr < 0)
                 right_mask = tmask & (sdist_arr > 0)
-                left_mass = float(pos[left_mask].sum())
-                right_mass = float(pos[right_mask].sum())
+                left_mass = float(pos_raw[left_mask].sum())
+                right_mass = float(pos_raw[right_mask].sum())
                 total_mass = left_mass + right_mass
                 if mass_per_token and n_scoreable:
                     # self mode: the target token count grows over denoising
@@ -186,23 +187,23 @@ def plot_infill(by_step, output_file, cmap_name="Purples",
     if n == 0:
         print("[ABORT] no matching panel steps.")
         return
-    cols = min(3, n) if n <= 3 else 2
+    # Prefer a wide 3-across grid (6 panels -> 3 cols x 2 rows). Panels are
+    # sized close to square and share both axes so interior tick labels are
+    # dropped, which removes most of the inter-panel whitespace.
+    cols = min(3, n)
     rows = math.ceil(n / cols)
-    fig, axes = plt.subplots(rows, cols, figsize=(5.0 * cols, 3.6 * rows),
-                             squeeze=False, sharey=True)
+    fig, axes = plt.subplots(rows, cols, figsize=(3.4 * cols, 2.7 * rows),
+                             squeeze=False, sharey=True, sharex=True)
     axes = axes.flatten()
     cmap = plt.get_cmap(cmap_name)
 
     for i, step in enumerate(steps):
         ax = axes[i]
         _draw_infill_axis(ax, by_step[step], cmap, max_abs_dist, bin_width, min_count)
-        ax.set_title(f"$t={step}$")
-        if i // cols == rows - 1:
-            ax.set_xlabel("Signed distance from span (tokens)")
-        if i % cols == 0:
-            ax.set_ylabel("Normalized |DLIG|")
+        ax.set_title(f"$t={step}$", pad=3)
         if i == 0:
-            ax.legend(frameon=False, loc="upper right")
+            # Anchor the center of the legend to data coordinates (x=0, y=1)
+            ax.legend(frameon=False, loc="center", bbox_to_anchor=(0, 1), bbox_transform=ax.transData)
             ax.text(0.02, 0.03, r"$\leftarrow$ left", transform=ax.transAxes,
                     fontsize=12, va='bottom')
             ax.text(0.80, 0.03, r"right $\rightarrow$", transform=ax.transAxes,
@@ -211,10 +212,18 @@ def plot_infill(by_step, output_file, cmap_name="Purples",
     for j in range(i + 1, len(axes)):
         axes[j].set_visible(False)
 
-    plt.tight_layout()
+    # Single shared axis labels (sharex/sharey make per-panel labels redundant
+    # and, repeated across 3 columns, they collide). One centered label each.
+    fig.supxlabel("Signed distance from span (tokens)")
+    fig.supylabel("Normalized |DLIG|")
+
+    # tight_layout with small pads, then squeeze the sharey/sharex gaps to near-0
+    plt.tight_layout(pad=0.4, w_pad=0.3, h_pad=0.5)
+    plt.subplots_adjust(wspace=0.05, hspace=0.18)
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
     plt.close(fig)
-    print(f"[SUCCESS] infill trajectory profile ({n} panels) -> {output_file}")
+    print(f"[SUCCESS] infill trajectory profile ({n} panels, "
+          f"{rows}x{cols}) -> {output_file}")
 
 
 def plot_scalar_scatter(per_story, field, ylabel, output_file,
@@ -265,22 +274,46 @@ def plot_scalar_scatter(per_story, field, ylabel, output_file,
 
 def plot_r_vs_step(per_story, field, output_file):
     """Pearson r(<field>, ROUGE-1) computed PER denoising step, plotted vs step.
-    No in-figure title; per-step r and n printed to stdout for the caption.
-    Per-step n varies under the self-generated target (degenerate early cells
-    are dropped), so n is reported alongside r."""
+    No in-figure title; per-step r, 95% bootstrap CI, and n printed to stdout
+    for the caption. Per-step n varies under the self-generated target
+    (degenerate early cells are dropped), so error bars are a percentile
+    bootstrap over stories rather than the null 1.96/sqrt(n-3) width -- this
+    keeps the early-step CI honest about the reduced, differently-composed
+    sample."""
     steps = sorted({d["step"] for d in per_story})
-    rs, ns = [], []
+    if not steps:
+        print("[ABORT] no per-story data for r-vs-step.")
+        return {}
+    rng = np.random.default_rng(0)
+    n_boot = 2000
+    rs, ns, lo, hi = [], [], [], []
     for s in steps:
         rows = [d for d in per_story if d["step"] == s]
         x = np.array([d["rouge1"] for d in rows])
         y = np.array([d[field] for d in rows], dtype=float)
-        r = np.corrcoef(x, y)[0, 1] if len(x) > 2 and x.std() > 0 and y.std() > 0 else float("nan")
+        ok = len(x) > 2 and x.std() > 0 and y.std() > 0
+        r = np.corrcoef(x, y)[0, 1] if ok else float("nan")
         rs.append(r); ns.append(len(rows))
-    # approx 95% CI for Pearson r: 1.96 / sqrt(n-3)
-    ci = [1.96 / np.sqrt(max(n - 3, 1)) for n in ns]
+        # Percentile bootstrap CI over stories: honest about the per-step sample
+        # (early self-mode steps drop degenerate cells, so n and composition vary).
+        if ok:
+            idx = np.arange(len(x))
+            boot = np.empty(n_boot)
+            for b in range(n_boot):
+                bi = rng.choice(idx, size=len(idx), replace=True)
+                bx, by = x[bi], y[bi]
+                boot[b] = (np.corrcoef(bx, by)[0, 1]
+                           if bx.std() > 0 and by.std() > 0 else np.nan)
+            lo.append(np.nanpercentile(boot, 2.5))
+            hi.append(np.nanpercentile(boot, 97.5))
+        else:
+            lo.append(float("nan")); hi.append(float("nan"))
+    # asymmetric yerr for errorbar: distances from the point estimate
+    yerr = np.array([[r - l for r, l in zip(rs, lo)],
+                     [h - r for r, h in zip(rs, hi)]])
 
     fig, ax = plt.subplots(figsize=(5.5, 4.2))
-    ax.errorbar(steps, rs, yerr=ci, marker="o", markersize=6, linewidth=2,
+    ax.errorbar(steps, rs, yerr=yerr, marker="o", markersize=6, linewidth=2,
                 capsize=4, color="#6b3fa0")
     ax.axhline(0, color="black", linewidth=1, linestyle="--")
     ax.set_xlabel("Denoising step $t$")
@@ -289,18 +322,29 @@ def plot_r_vs_step(per_story, field, output_file):
     plt.tight_layout()
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
     plt.close(fig)
-    rtxt = ", ".join(f"t{s}: r={r:.3f} (n={n})" for s, r, n in zip(steps, rs, ns))
+    rtxt = ", ".join(f"t{s}: r={r:.3f} [{l:.3f},{h:.3f}] (n={n})"
+                     for s, r, l, h, n in zip(steps, rs, lo, hi, ns))
     print(f"[SUCCESS] r-vs-step -> {output_file}")
-    print(f"[CAPTION] {field} per step: {rtxt}")
+    print(f"[CAPTION] {field} per step (2000-boot 95% CI): {rtxt}")
     return dict(zip(steps, rs))
 
 
-def plot_ratio_scatter(per_story, output_file, step=None):
-    """Appendix-only: right/left ratio vs ROUGE (null result; main text cites
-    the r value instead of showing the figure)."""
-    return plot_scalar_scatter(per_story, "ratio",
-                               "Right / Left context-mass ratio",
-                               output_file, step=step, href=1.0)
+def compute_ratio_r(per_story, step=None):
+    """Right/left mass-ratio vs ROUGE is a null result reported as a Pearson r
+    in text, not as a figure. Compute and print r, n, and mean ratio; emit no
+    plot. (Replaces the redundant ratio_scatter figure.)"""
+    rows = [d for d in per_story if (step is None or d["step"] == step)]
+    if len(rows) < 3:
+        print("[INFO] ratio r: insufficient per-story data.")
+        return float("nan")
+    x = np.array([d["rouge1"] for d in rows])
+    y = np.array([d["ratio"] for d in rows], dtype=float)
+    r = np.corrcoef(x, y)[0, 1] if x.std() > 0 and y.std() > 0 else float("nan")
+    mean_ratio = float(np.mean(y))
+    step_tag = f"step={step}" if step is not None else "all steps"
+    print(f"[CAPTION] ratio(right/left) vs ROUGE: Pearson r={r:.3f}, "
+          f"n={len(x)}, mean ratio={mean_ratio:.3f}, {step_tag}")
+    return r
 
 
 def main():
@@ -320,7 +364,7 @@ def main():
                         help="normalize left/right/total context mass by the number "
                              "of scoreable target tokens at each step (self mode: "
                              "removes the growing-target-size trend across steps).")
-    parser.add_argument("--out_dir", type=str, default="outputs/absolute")
+    parser.add_argument("--out_dir", type=str, default="outputs/infill_attribution")
     parser.add_argument("--input_file", type=str, default=None)
     parser.add_argument("--layer_agg", type=str, default="sum",
                         choices=["sum", "mean", "peak"],
@@ -341,20 +385,26 @@ def main():
                         help="Cap on distance-from-span axis.")
     parser.add_argument("--bin_width", type=int, default=2,
                         help="Bin width over distance (smooths variable lengths).")
-    parser.add_argument("--scatter", action="store_true",
-                        help="infill: also emit right/left mass-ratio vs ROUGE-1 scatter (the "
-                             "sensitive quality test, with Pearson r).")
+    parser.add_argument("--ratio_r", action="store_true",
+                        help="infill: print Pearson r(right/left ratio, ROUGE-1), n, and "
+                             "mean ratio for the caption. Null result -- reported as a "
+                             "number, no figure (replaces the redundant ratio_scatter).")
     parser.add_argument("--mass_scatter", action="store_true",
                         help="infill: emit TOTAL context-mass vs ROUGE-1 scatter + the "
                              "r(total_mass,ROUGE)-vs-denoising-step curve (the magnitude/trajectory test).")
     parser.add_argument("--scatter_step", type=int, default=None,
                         help="infill scatter: restrict single-scatter to one denoising step (default: all).")
+    parser.add_argument("--profile", action="store_true",
+                        help="emit the signed-distance profile figure (small-multiples "
+                             "grid). Off by default so scatter-only runs don't "
+                             "regenerate it as a side effect.")
+
     args = parser.parse_args()
 
     fam_display = "Dream-7B" if args.family.lower() == "dream" else "DiffuGPT-M"
     input_file = args.input_file or os.path.join(
         args.out_dir,
-        f"{args.family.lower()}_rocstories_infill_attribution_{args.target_mode}.jsonl")
+        f"{args.family.lower()}_{args.target_mode}.jsonl")
 
     # resolve --split_rouge: float, or 'median' computed over stories in the file
     if args.split_rouge is not None:
@@ -372,12 +422,16 @@ def main():
 
     norm_tag = "_raw" if args.raw else ""
     tail_tag = f"_tail{args.tail_min}" if args.tail_min else ""
-    tag = f"_split{args.split_rouge}" if args.split_rouge is not None else ""
+    # Clean 2-decimal split tag: avoids float noise like split0.20000000000000004
+    tag = f"_split{args.split_rouge:.2f}" if args.split_rouge is not None else ""
     mode_tag = f"_{args.target_mode}"
+    mpt_tag = "_pertok" if args.mass_per_token else ""
     panel_tag = ("_t" + "-".join(map(str, args.panel_steps))) if args.panel_steps else ""
+    plot_dir = os.path.join(args.out_dir, "plots", args.target_mode)
+    os.makedirs(plot_dir, exist_ok=True)
     output_plot = os.path.join(
-        args.out_dir,
-        f"plot_{args.family.lower()}_rocstories_infill{mode_tag}{tag}{norm_tag}{tail_tag}{panel_tag}.png")
+        plot_dir,
+        f"{args.family.lower()}{mode_tag}{tag}{norm_tag}{tail_tag}{panel_tag}.png")
     print(f"[INFO] {fam_display} ROCStories infilling from {input_file} "
           f"[mode={args.target_mode}, split_rouge={args.split_rouge}, raw={args.raw}, "
           f"tail_min={args.tail_min}]...")
@@ -396,35 +450,32 @@ def main():
                   f"min={r1s.min():.3f} max={r1s.max():.3f} "
                   f">={args.split_rouge}: {(r1s>=args.split_rouge).mean()*100:.1f}%")
 
-    plot_infill(
-        by_step,
-        output_plot,
-        cmap_name="Purples" if args.family.lower() == "diffugpt" else "Teals",
-        max_abs_dist=args.max_dist, bin_width=args.bin_width,
-        min_count=args.min_count, panel_steps=args.panel_steps,
-    )
+    if args.profile:
+        plot_infill(
+            by_step,
+            output_plot,
+            cmap_name="Purples" if args.family.lower() == "diffugpt" else "Teals",
+            max_abs_dist=args.max_dist, bin_width=args.bin_width,
+            min_count=args.min_count, panel_steps=args.panel_steps,
+        )
 
-    if args.scatter:
-        scat_out = os.path.join(
-            args.out_dir,
-            f"plot_{args.family.lower()}_rocstories_infill{mode_tag}_ratio_scatter"
-            f"{('_step'+str(args.scatter_step)) if args.scatter_step is not None else ''}.png")
-        plot_ratio_scatter(meta["per_story"], scat_out, step=args.scatter_step)
+    if args.ratio_r:
+        compute_ratio_r(meta["per_story"], step=args.scatter_step)
 
     if args.mass_scatter:
         # total-context-mass vs ROUGE scatter (single step or pooled)
         ms_out = os.path.join(
-            args.out_dir,
-            f"plot_{args.family.lower()}_rocstories_infill{mode_tag}_totalmass_scatter"
+            plot_dir,
+            f"{args.family.lower()}{mode_tag}{mpt_tag}_totalmass_scatter"
             f"{('_step'+str(args.scatter_step)) if args.scatter_step is not None else ''}.png")
         plot_scalar_scatter(
             meta["per_story"], "total_mass",
-            "Total context mass (|DLIG| over context)",
+            "Total context mass",
             ms_out, step=args.scatter_step)
         # r(total_mass, ROUGE) vs denoising step  -- the trajectory result
         rstep_out = os.path.join(
-            args.out_dir,
-            f"plot_{args.family.lower()}_rocstories_infill{mode_tag}_r_vs_step.png")
+            plot_dir,
+            f"{args.family.lower()}{mode_tag}{mpt_tag}_r_vs_step.png")
         plot_r_vs_step(meta["per_story"], "total_mass", rstep_out)
 
 

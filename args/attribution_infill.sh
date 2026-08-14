@@ -26,7 +26,7 @@ SCORE_MODE="meancentered"             # n_t-normalized, comparable across timest
 TARGET_STEPS=(1 3 5 7 9 11)           # which recorded denoising steps to attribute at
 LAYERS=(0 2 4 6 8 10 12 14 16 18 20 22)
 
-OUT_FILE="outputs/absolute/diffugpt_rocstories_infill_attribution_${TARGET_MODE}.jsonl"
+OUT_FILE="outputs/infill_attribution/diffugpt_${TARGET_MODE}.jsonl"
 ########################################
 
 LOG_DIR="runs/${EXPERIMENT}"
