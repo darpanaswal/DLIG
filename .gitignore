@@ -7,4 +7,5 @@ runs
 dlig
 Diffugpt
 diffugpt-m-prosqa
+diffugpt-m-wic
 outputs/*.jsonl

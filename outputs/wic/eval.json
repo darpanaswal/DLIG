@@ -1,0 +1,3512 @@
+{
+  "summary": {
+    "model_path": "models/diffugpt-m-wic",
+    "n": 500,
+    "accuracy": 0.488,
+    "accuracy_over_readable": 0.5879518072289157,
+    "readable": 415,
+    "correct": 244
+  },
+  "per_example": [
+    {
+      "word": "field",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.eth are",
+      "ok": 1
+    },
+    {
+      "word": "look",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.The pool comes",
+      "ok": 1
+    },
+    {
+      "word": "patch",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "use",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.\nGet help.",
+      "ok": 0
+    },
+    {
+      "word": "suffer",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. No one",
+      "ok": 1
+    },
+    {
+      "word": "blow",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.4. No",
+      "ok": 0
+    },
+    {
+      "word": "tendency",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "take",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. No.",
+      "ok": 0
+    },
+    {
+      "word": "compass",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "give",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "answer",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.No, Answer",
+      "ok": 1
+    },
+    {
+      "word": "prise",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes..",
+      "ok": 1
+    },
+    {
+      "word": "have",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes and No.No",
+      "ok": 0
+    },
+    {
+      "word": "know",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Y.",
+      "ok": 1
+    },
+    {
+      "word": "development",
+      "label": 1,
+      "pred": 0,
+      "gen_text": "No. have marked",
+      "ok": 0
+    },
+    {
+      "word": "winnow",
+      "label": 0,
+      "pred": 1,
+      "gen_text": ". Yes. No.",
+      "ok": 0
+    },
+    {
+      "word": "stay",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.No.",
+      "ok": 0
+    },
+    {
+      "word": "head",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "pick",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes No.EL",
+      "ok": 1
+    },
+    {
+      "word": "fail",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes.I cannot",
+      "ok": 1
+    },
+    {
+      "word": "point",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. of point",
+      "ok": 0
+    },
+    {
+      "word": "follow",
+      "label": 0,
+      "pred": null,
+      "gen_text": "Kids follow in to friends",
+      "ok": 0
+    },
+    {
+      "word": "action",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Examples of action",
+      "ok": 1
+    },
+    {
+      "word": "edge",
+      "label": 1,
+      "pred": null,
+      "gen_text": "Straight back.edge",
+      "ok": 0
+    },
+    {
+      "word": "pass",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.",
+      "ok": 1
+    },
+    {
+      "word": "note",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "interest",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "answer",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Yes. Yes",
+      "ok": 1
+    },
+    {
+      "word": "disband",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "fall",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "reseat",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.#hotmail",
+      "ok": 1
+    },
+    {
+      "word": "hold",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes.Hold Hold",
+      "ok": 0
+    },
+    {
+      "word": "time",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "normalize",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Similar words and",
+      "ok": 1
+    },
+    {
+      "word": "make",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. No not. Yes",
+      "ok": 0
+    },
+    {
+      "word": "fix",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Turner",
+      "ok": 0
+    },
+    {
+      "word": "head",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "fire",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "scene",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "take",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "snow",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "block",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes it,,",
+      "ok": 0
+    },
+    {
+      "word": "air",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.Is",
+      "ok": 1
+    },
+    {
+      "word": "neighbour",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "spot",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "make",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Make income.",
+      "ok": 0
+    },
+    {
+      "word": "stretch",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes. Yes",
+      "ok": 1
+    },
+    {
+      "word": "run",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Yes I",
+      "ok": 0
+    },
+    {
+      "word": "confidence",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "classify",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "term",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.\nName the word",
+      "ok": 1
+    },
+    {
+      "word": "agonist",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. a",
+      "ok": 1
+    },
+    {
+      "word": "beat",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. The grandfather beat midnight",
+      "ok": 0
+    },
+    {
+      "word": "feel",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "YesNo. No, down",
+      "ok": 0
+    },
+    {
+      "word": "ream",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "carry",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes. Carry your",
+      "ok": 1
+    },
+    {
+      "word": "support",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "shed",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yesline Oliner",
+      "ok": 1
+    },
+    {
+      "word": "finish",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes Yes",
+      "ok": 1
+    },
+    {
+      "word": "case",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "speck",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes.",
+      "ok": 1
+    },
+    {
+      "word": "describe",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.YeeZ",
+      "ok": 1
+    },
+    {
+      "word": "washout",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.per-",
+      "ok": 0
+    },
+    {
+      "word": "counterfeit",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "burn",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.\nThis example shows",
+      "ok": 0
+    },
+    {
+      "word": "beat",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "\ufffd No.",
+      "ok": 1
+    },
+    {
+      "word": "fall",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.cheter,",
+      "ok": 0
+    },
+    {
+      "word": "tension",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "order",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "see",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "woodenness",
+      "label": 1,
+      "pred": null,
+      "gen_text": ".illy.",
+      "ok": 0
+    },
+    {
+      "word": "develop",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "make",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.ase.",
+      "ok": 1
+    },
+    {
+      "word": "enter",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "scale",
+      "label": 1,
+      "pred": 0,
+      "gen_text": "No.-",
+      "ok": 0
+    },
+    {
+      "word": "softness",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "raise",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes.r",
+      "ok": 0
+    },
+    {
+      "word": "weakness",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "translate",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "fill",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "raise",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. (Ver)",
+      "ok": 0
+    },
+    {
+      "word": "accept",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. No",
+      "ok": 0
+    },
+    {
+      "word": "give",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "open",
+      "label": 0,
+      "pred": null,
+      "gen_text": "sez.",
+      "ok": 0
+    },
+    {
+      "word": "move",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "offer",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "hyponym",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.See also:",
+      "ok": 1
+    },
+    {
+      "word": "shortness",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.se.",
+      "ok": 1
+    },
+    {
+      "word": "side",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "One Yes for side",
+      "ok": 1
+    },
+    {
+      "word": "stretch",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Answer this",
+      "ok": 1
+    },
+    {
+      "word": "shag",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.A shag",
+      "ok": 0
+    },
+    {
+      "word": "credit",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "wash",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "halt",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Halt the",
+      "ok": 1
+    },
+    {
+      "word": "life",
+      "label": 0,
+      "pred": null,
+      "gen_text": ". In the past tense",
+      "ok": 0
+    },
+    {
+      "word": "connection",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "carry",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "get",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.\ud06c",
+      "ok": 1
+    },
+    {
+      "word": "lift",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. Use that term",
+      "ok": 0
+    },
+    {
+      "word": "poise",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Home \u2192 Help",
+      "ok": 1
+    },
+    {
+      "word": "purchase",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "tell",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "develop",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.IALIAL",
+      "ok": 1
+    },
+    {
+      "word": "uncork",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes.",
+      "ok": 1
+    },
+    {
+      "word": "cut",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes",
+      "ok": 0
+    },
+    {
+      "word": "work",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.Scrib",
+      "ok": 1
+    },
+    {
+      "word": "run",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.So she she",
+      "ok": 0
+    },
+    {
+      "word": "lie",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.",
+      "ok": 1
+    },
+    {
+      "word": "formation",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. following formation",
+      "ok": 1
+    },
+    {
+      "word": "street",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes.ip",
+      "ok": 1
+    },
+    {
+      "word": "inventory",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "pay",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "head",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "point",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "patch",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "mode",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.How much and",
+      "ok": 0
+    },
+    {
+      "word": "love",
+      "label": 1,
+      "pred": null,
+      "gen_text": "Love comes pretty fast.",
+      "ok": 0
+    },
+    {
+      "word": "tumble",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "place",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Selling money",
+      "ok": 0
+    },
+    {
+      "word": "case",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "classify",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Reexamine",
+      "ok": 1
+    },
+    {
+      "word": "collision",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Seamships",
+      "ok": 1
+    },
+    {
+      "word": "end",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "build",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes yes.\u2014 \u2014",
+      "ok": 0
+    },
+    {
+      "word": "charge",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.YIPPEE",
+      "ok": 0
+    },
+    {
+      "word": "trombone",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "respect",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Queen Yun Empress",
+      "ok": 0
+    },
+    {
+      "word": "communication",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.The No",
+      "ok": 1
+    },
+    {
+      "word": "get",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.What does",
+      "ok": 0
+    },
+    {
+      "word": "put",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.No. Yes",
+      "ok": 1
+    },
+    {
+      "word": "luck",
+      "label": 0,
+      "pred": null,
+      "gen_text": "say luck.",
+      "ok": 0
+    },
+    {
+      "word": "unionize",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.At the time",
+      "ok": 1
+    },
+    {
+      "word": "pack",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes.B the",
+      "ok": 0
+    },
+    {
+      "word": "head",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "softness",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "say",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.acc-",
+      "ok": 1
+    },
+    {
+      "word": "play",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. -- --",
+      "ok": 1
+    },
+    {
+      "word": "boy",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Men's",
+      "ok": 1
+    },
+    {
+      "word": "breath",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.: No",
+      "ok": 1
+    },
+    {
+      "word": "have",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes Yes Yes Yes Yes",
+      "ok": 0
+    },
+    {
+      "word": "light",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. David stopped the car",
+      "ok": 0
+    },
+    {
+      "word": "live",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "give",
+      "label": 0,
+      "pred": null,
+      "gen_text": "it in",
+      "ok": 0
+    },
+    {
+      "word": "turn",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "inclusion",
+      "label": 0,
+      "pred": null,
+      "gen_text": "They have.The.",
+      "ok": 0
+    },
+    {
+      "word": "wall",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Original language:",
+      "ok": 1
+    },
+    {
+      "word": "habit",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. Length",
+      "ok": 0
+    },
+    {
+      "word": "come",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "YesYes..",
+      "ok": 0
+    },
+    {
+      "word": "order",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. and order",
+      "ok": 1
+    },
+    {
+      "word": "spot",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Yes.",
+      "ok": 0
+    },
+    {
+      "word": "shame",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "YesYes.",
+      "ok": 1
+    },
+    {
+      "word": "trump",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "persuasion",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "check",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "YesYes.When I",
+      "ok": 1
+    },
+    {
+      "word": "seat",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "work",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes. Yes, No",
+      "ok": 1
+    },
+    {
+      "word": "exercise",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "work",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "consider",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "beat",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No. No,",
+      "ok": 1
+    },
+    {
+      "word": "think",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "civilization",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.No.",
+      "ok": 0
+    },
+    {
+      "word": "mechanism",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "raise",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. the word smile",
+      "ok": 0
+    },
+    {
+      "word": "narrowness",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.All Rights Reserved",
+      "ok": 1
+    },
+    {
+      "word": "bit",
+      "label": 0,
+      "pred": null,
+      "gen_text": "ee-chee.",
+      "ok": 0
+    },
+    {
+      "word": "field",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.###",
+      "ok": 1
+    },
+    {
+      "word": "search",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.ing a",
+      "ok": 1
+    },
+    {
+      "word": "channel",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. English",
+      "ok": 1
+    },
+    {
+      "word": "meet",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "education",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "neighborhood",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "pull",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Names with hyp",
+      "ok": 1
+    },
+    {
+      "word": "gravitation",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.The sign of",
+      "ok": 1
+    },
+    {
+      "word": "break",
+      "label": 1,
+      "pred": null,
+      "gen_text": "ailout.",
+      "ok": 0
+    },
+    {
+      "word": "empty",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "mine",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "application",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "pack",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.k.",
+      "ok": 0
+    },
+    {
+      "word": "life",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "gather",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes.",
+      "ok": 1
+    },
+    {
+      "word": "sense",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.The meaning of",
+      "ok": 1
+    },
+    {
+      "word": "give",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "grip",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.There was a",
+      "ok": 0
+    },
+    {
+      "word": "bed",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "burn",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "drink",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes.No",
+      "ok": 1
+    },
+    {
+      "word": "number",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.6.",
+      "ok": 0
+    },
+    {
+      "word": "see",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Press letter Yes Yes.",
+      "ok": 0
+    },
+    {
+      "word": "make",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Yes, No",
+      "ok": 1
+    },
+    {
+      "word": "use",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "light",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. That lights out",
+      "ok": 0
+    },
+    {
+      "word": "throw",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.",
+      "ok": 1
+    },
+    {
+      "word": "draw",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. No,",
+      "ok": 1
+    },
+    {
+      "word": "unit",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "fire",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "rotate",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. Rotate",
+      "ok": 0
+    },
+    {
+      "word": "loss",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "take",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "operation",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "leave",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. No.",
+      "ok": 0
+    },
+    {
+      "word": "pay",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes.All year",
+      "ok": 0
+    },
+    {
+      "word": "raise",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "field",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.osite the",
+      "ok": 0
+    },
+    {
+      "word": "pop",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.No.6",
+      "ok": 1
+    },
+    {
+      "word": "accord",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.1.",
+      "ok": 0
+    },
+    {
+      "word": "turn",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. shift enemy",
+      "ok": 0
+    },
+    {
+      "word": "make",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes. Yes",
+      "ok": 1
+    },
+    {
+      "word": "wall",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. a",
+      "ok": 0
+    },
+    {
+      "word": "fall",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Bands and",
+      "ok": 1
+    },
+    {
+      "word": "crash",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes it will.",
+      "ok": 1
+    },
+    {
+      "word": "do",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes. Yes no.",
+      "ok": 0
+    },
+    {
+      "word": "presence",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.No.",
+      "ok": 0
+    },
+    {
+      "word": "action",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes. Yes.",
+      "ok": 1
+    },
+    {
+      "word": "field",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.EAR:",
+      "ok": 0
+    },
+    {
+      "word": "shtik",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.., Yes.",
+      "ok": 0
+    },
+    {
+      "word": "tense",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Learn to",
+      "ok": 0
+    },
+    {
+      "word": "run",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "par",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.LOUDER",
+      "ok": 0
+    },
+    {
+      "word": "stick",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "avoid",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "case",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.\nDoes the word",
+      "ok": 0
+    },
+    {
+      "word": "cut",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.First.",
+      "ok": 0
+    },
+    {
+      "word": "hold",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "krona",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yesw\u0101r",
+      "ok": 1
+    },
+    {
+      "word": "lift",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. sanctions.",
+      "ok": 0
+    },
+    {
+      "word": "face",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.St direction.",
+      "ok": 1
+    },
+    {
+      "word": "humor",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Today's readings",
+      "ok": 1
+    },
+    {
+      "word": "defensiveness",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Defensiveness is",
+      "ok": 1
+    },
+    {
+      "word": "culture",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes.How many",
+      "ok": 1
+    },
+    {
+      "word": "home",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "hold",
+      "label": 1,
+      "pred": null,
+      "gen_text": "Thanks for your customer.",
+      "ok": 0
+    },
+    {
+      "word": "charge",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No. Charge of the purchase",
+      "ok": 1
+    },
+    {
+      "word": "grip",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Greeches",
+      "ok": 1
+    },
+    {
+      "word": "swing",
+      "label": 0,
+      "pred": null,
+      "gen_text": ".",
+      "ok": 0
+    },
+    {
+      "word": "agonist",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.ICE is",
+      "ok": 0
+    },
+    {
+      "word": "stretch",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.That is bold",
+      "ok": 0
+    },
+    {
+      "word": "move",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "stay",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Wait a while",
+      "ok": 0
+    },
+    {
+      "word": "end",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "believe",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "give",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. Yes",
+      "ok": 0
+    },
+    {
+      "word": "cuddle",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes",
+      "ok": 1
+    },
+    {
+      "word": "strength",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.),",
+      "ok": 0
+    },
+    {
+      "word": "head",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes under the correct title.",
+      "ok": 0
+    },
+    {
+      "word": "keep",
+      "label": 1,
+      "pred": null,
+      "gen_text": ". Am",
+      "ok": 0
+    },
+    {
+      "word": "bum",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "break",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "YesYes.How much",
+      "ok": 1
+    },
+    {
+      "word": "quality",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "approach",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "meet",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "play",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.This is the",
+      "ok": 1
+    },
+    {
+      "word": "ball",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "stick",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes yes.",
+      "ok": 1
+    },
+    {
+      "word": "edge",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "smile",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "support",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "bit",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. Yes it.",
+      "ok": 0
+    },
+    {
+      "word": "set",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.oun (",
+      "ok": 1
+    },
+    {
+      "word": "run",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Start with",
+      "ok": 0
+    },
+    {
+      "word": "strike",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. No.Germany",
+      "ok": 0
+    },
+    {
+      "word": "efface",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes.ing",
+      "ok": 0
+    },
+    {
+      "word": "see",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "round",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. No.",
+      "ok": 0
+    },
+    {
+      "word": "throw",
+      "label": 0,
+      "pred": null,
+      "gen_text": "+",
+      "ok": 0
+    },
+    {
+      "word": "trend",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "flatten",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Select another option",
+      "ok": 1
+    },
+    {
+      "word": "work",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No. Yes.",
+      "ok": 1
+    },
+    {
+      "word": "make",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes.",
+      "ok": 1
+    },
+    {
+      "word": "refill",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes.He",
+      "ok": 1
+    },
+    {
+      "word": "break",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.eed,",
+      "ok": 0
+    },
+    {
+      "word": "mark",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "control",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes..",
+      "ok": 1
+    },
+    {
+      "word": "excuse",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "charge",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "rest",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "unionize",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes. Yes.",
+      "ok": 1
+    },
+    {
+      "word": "length",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No length.",
+      "ok": 1
+    },
+    {
+      "word": "stuff",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "frequency",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Does not.",
+      "ok": 1
+    },
+    {
+      "word": "match",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "danger",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes. Yes",
+      "ok": 1
+    },
+    {
+      "word": "start",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Start. No",
+      "ok": 0
+    },
+    {
+      "word": "head",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "move",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "case",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "break",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.ible Yes",
+      "ok": 1
+    },
+    {
+      "word": "hold",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. \u2014 \u2014",
+      "ok": 0
+    },
+    {
+      "word": "stick",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "make",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "hold",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.,",
+      "ok": 1
+    },
+    {
+      "word": "head",
+      "label": 0,
+      "pred": null,
+      "gen_text": ". A have or",
+      "ok": 0
+    },
+    {
+      "word": "keep",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes and No.",
+      "ok": 0
+    },
+    {
+      "word": "take",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "job",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. What",
+      "ok": 1
+    },
+    {
+      "word": "wall",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Ackle",
+      "ok": 1
+    },
+    {
+      "word": "forbid",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.in - -",
+      "ok": 1
+    },
+    {
+      "word": "bear",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes..###|",
+      "ok": 0
+    },
+    {
+      "word": "trial",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No, mixed with.",
+      "ok": 1
+    },
+    {
+      "word": "marriage",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "pass",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.ay.",
+      "ok": 1
+    },
+    {
+      "word": "day",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes. Yes Yes.",
+      "ok": 1
+    },
+    {
+      "word": "come",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Today's title",
+      "ok": 0
+    },
+    {
+      "word": "run",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "refine",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.It requires additional",
+      "ok": 1
+    },
+    {
+      "word": "have",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "purge",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.A lot.",
+      "ok": 1
+    },
+    {
+      "word": "vote",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "advance",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Improvement.",
+      "ok": 0
+    },
+    {
+      "word": "majority",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. YesYes. Yes",
+      "ok": 1
+    },
+    {
+      "word": "sale",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "voice",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes. Yes.",
+      "ok": 0
+    },
+    {
+      "word": "tell",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "\"Yes,\" he said.",
+      "ok": 1
+    },
+    {
+      "word": "time",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Noun.",
+      "ok": 1
+    },
+    {
+      "word": "get",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes. clear",
+      "ok": 1
+    },
+    {
+      "word": "repair",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.,",
+      "ok": 0
+    },
+    {
+      "word": "apply",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "office",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.What",
+      "ok": 0
+    },
+    {
+      "word": "education",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "pain",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "side",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Cut scene.",
+      "ok": 0
+    },
+    {
+      "word": "fanny",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Have you seen",
+      "ok": 1
+    },
+    {
+      "word": "quality",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "reticulation",
+      "label": 1,
+      "pred": null,
+      "gen_text": "Choose a specific article and",
+      "ok": 0
+    },
+    {
+      "word": "floor",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "cover",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.accidental.",
+      "ok": 1
+    },
+    {
+      "word": "field",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.-,",
+      "ok": 1
+    },
+    {
+      "word": "time",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes or No.",
+      "ok": 0
+    },
+    {
+      "word": "drop",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "YesYes. Yes. Yes",
+      "ok": 1
+    },
+    {
+      "word": "altitude",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.If \"If",
+      "ok": 1
+    },
+    {
+      "word": "floor",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Floor,",
+      "ok": 0
+    },
+    {
+      "word": "finish",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "tea",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "effect",
+      "label": 0,
+      "pred": null,
+      "gen_text": ", be, be",
+      "ok": 0
+    },
+    {
+      "word": "bankruptcy",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Definition of:",
+      "ok": 1
+    },
+    {
+      "word": "check",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Yes.",
+      "ok": 0
+    },
+    {
+      "word": "charge",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "take",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "know",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "bit",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "color",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "keep",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "gold",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.-IS-",
+      "ok": 1
+    },
+    {
+      "word": "passing",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.",
+      "ok": 1
+    },
+    {
+      "word": "sale",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "carry",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "grater",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Choosing",
+      "ok": 1
+    },
+    {
+      "word": "see",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.###6",
+      "ok": 0
+    },
+    {
+      "word": "enthalpy",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "YesYesYes. YesYes",
+      "ok": 1
+    },
+    {
+      "word": "place",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "piece",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.I cannot",
+      "ok": 1
+    },
+    {
+      "word": "game",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. a second",
+      "ok": 0
+    },
+    {
+      "word": "transplant",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "touch",
+      "label": 0,
+      "pred": 0,
+      "gen_text": ".. No",
+      "ok": 1
+    },
+    {
+      "word": "piece",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "YesYes.Customer Comments",
+      "ok": 0
+    },
+    {
+      "word": "beat",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.. 5 in.",
+      "ok": 1
+    },
+    {
+      "word": "step",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Those who step",
+      "ok": 0
+    },
+    {
+      "word": "kill",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "drive",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "life",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "song",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.\u00e2",
+      "ok": 0
+    },
+    {
+      "word": "see",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Both words.",
+      "ok": 1
+    },
+    {
+      "word": "draw",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "fun",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Definition of sex",
+      "ok": 1
+    },
+    {
+      "word": "crunch",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes, the word.",
+      "ok": 1
+    },
+    {
+      "word": "trail",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Shoot.",
+      "ok": 0
+    },
+    {
+      "word": "run",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "YesYes Yes Yes",
+      "ok": 0
+    },
+    {
+      "word": "krona",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes.",
+      "ok": 1
+    },
+    {
+      "word": "mouth",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. Yes it.",
+      "ok": 0
+    },
+    {
+      "word": "pull",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Wrong,",
+      "ok": 0
+    },
+    {
+      "word": "development",
+      "label": 1,
+      "pred": 0,
+      "gen_text": "No.",
+      "ok": 0
+    },
+    {
+      "word": "quarter",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "A quarter. Yes.",
+      "ok": 0
+    },
+    {
+      "word": "bake",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes. Yes",
+      "ok": 1
+    },
+    {
+      "word": "head",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.ASYOUND",
+      "ok": 1
+    },
+    {
+      "word": "classify",
+      "label": 1,
+      "pred": null,
+      "gen_text": "The most common answer is",
+      "ok": 0
+    },
+    {
+      "word": "hold",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "YesI hold your promise.",
+      "ok": 0
+    },
+    {
+      "word": "sense",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "system",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.No.",
+      "ok": 1
+    },
+    {
+      "word": "plug",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.TENY",
+      "ok": 0
+    },
+    {
+      "word": "thought",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.The following symbols",
+      "ok": 1
+    },
+    {
+      "word": "fool",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes Yes Yes \u2014 Yes",
+      "ok": 1
+    },
+    {
+      "word": "follow",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. No: Yes.",
+      "ok": 0
+    },
+    {
+      "word": "break",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. No. 2.",
+      "ok": 1
+    },
+    {
+      "word": "create",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "believe",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.\nAlso use this",
+      "ok": 1
+    },
+    {
+      "word": "point",
+      "label": 0,
+      "pred": null,
+      "gen_text": "\ufffd",
+      "ok": 0
+    },
+    {
+      "word": "hit",
+      "label": 1,
+      "pred": 0,
+      "gen_text": "No. Yes. Yes.",
+      "ok": 0
+    },
+    {
+      "word": "know",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. may need",
+      "ok": 1
+    },
+    {
+      "word": "play",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.. T",
+      "ok": 1
+    },
+    {
+      "word": "background",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "avoid",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Had she known",
+      "ok": 1
+    },
+    {
+      "word": "get",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. word",
+      "ok": 0
+    },
+    {
+      "word": "serve",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Yes. Yes",
+      "ok": 1
+    },
+    {
+      "word": "life",
+      "label": 0,
+      "pred": null,
+      "gen_text": "Can only be life and",
+      "ok": 0
+    },
+    {
+      "word": "torrent",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.The company suffered",
+      "ok": 0
+    },
+    {
+      "word": "break",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No..ash.",
+      "ok": 1
+    },
+    {
+      "word": "set",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "period",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "melt",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "snorter",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes word \u2013 Yes",
+      "ok": 0
+    },
+    {
+      "word": "call",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "direction",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. No. No.",
+      "ok": 0
+    },
+    {
+      "word": "post",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "evil",
+      "label": 1,
+      "pred": 0,
+      "gen_text": "No. Give me an",
+      "ok": 0
+    },
+    {
+      "word": "draw",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.\ufffd",
+      "ok": 1
+    },
+    {
+      "word": "eye",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes...",
+      "ok": 0
+    },
+    {
+      "word": "have",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.:",
+      "ok": 1
+    },
+    {
+      "word": "fish",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "set",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.",
+      "ok": 1
+    },
+    {
+      "word": "answer",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "work",
+      "label": 0,
+      "pred": 0,
+      "gen_text": ". No No",
+      "ok": 1
+    },
+    {
+      "word": "line",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes..",
+      "ok": 0
+    },
+    {
+      "word": "coverage",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "life",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. Yes.Is",
+      "ok": 0
+    },
+    {
+      "word": "taste",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "raise",
+      "label": 0,
+      "pred": null,
+      "gen_text": "respassing said on",
+      "ok": 0
+    },
+    {
+      "word": "give",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "day",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.This is that",
+      "ok": 1
+    },
+    {
+      "word": "cup",
+      "label": 0,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "camp",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "lift",
+      "label": 0,
+      "pred": null,
+      "gen_text": ".Where can my",
+      "ok": 0
+    },
+    {
+      "word": "dig",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Tul:",
+      "ok": 1
+    },
+    {
+      "word": "drop",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. Yes.",
+      "ok": 0
+    },
+    {
+      "word": "dress",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "inspect",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "read",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "be",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "look",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "blow",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "loaf",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "appear",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Definition.",
+      "ok": 1
+    },
+    {
+      "word": "demand",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.Demand person demand",
+      "ok": 1
+    },
+    {
+      "word": "formation",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.CHK",
+      "ok": 1
+    },
+    {
+      "word": "beat",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.I beat you",
+      "ok": 0
+    },
+    {
+      "word": "spread",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes Yes: Yes.",
+      "ok": 1
+    },
+    {
+      "word": "land",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "head",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "block",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Block an",
+      "ok": 0
+    },
+    {
+      "word": "pack",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. you\")",
+      "ok": 1
+    },
+    {
+      "word": "unit",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "stay",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.We stayed.",
+      "ok": 0
+    },
+    {
+      "word": "nose",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Advanced English",
+      "ok": 0
+    },
+    {
+      "word": "choke",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.\ufffd",
+      "ok": 0
+    },
+    {
+      "word": "leave",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No",
+      "ok": 1
+    },
+    {
+      "word": "charge",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. was in",
+      "ok": 0
+    },
+    {
+      "word": "carry",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Include",
+      "ok": 1
+    },
+    {
+      "word": "stretch",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Note that only",
+      "ok": 0
+    },
+    {
+      "word": "society",
+      "label": 1,
+      "pred": null,
+      "gen_text": "What having a society mean",
+      "ok": 0
+    },
+    {
+      "word": "trim",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "YesYes.-",
+      "ok": 0
+    },
+    {
+      "word": "floor",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.::",
+      "ok": 1
+    },
+    {
+      "word": "give",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "costume",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "blow",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes.",
+      "ok": 0
+    },
+    {
+      "word": "pay",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No. No. Yes",
+      "ok": 1
+    },
+    {
+      "word": "portfolio",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "constriction",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. the",
+      "ok": 1
+    },
+    {
+      "word": "feeling",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes.Question 1",
+      "ok": 0
+    },
+    {
+      "word": "submission",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.istance \u2014",
+      "ok": 1
+    },
+    {
+      "word": "stick",
+      "label": 0,
+      "pred": null,
+      "gen_text": "\u00c1",
+      "ok": 0
+    },
+    {
+      "word": "reaction",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.\ufffd",
+      "ok": 0
+    },
+    {
+      "word": "rig",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.How much",
+      "ok": 0
+    },
+    {
+      "word": "blend",
+      "label": 1,
+      "pred": null,
+      "gen_text": "...",
+      "ok": 0
+    },
+    {
+      "word": "size",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "translate",
+      "label": 0,
+      "pred": null,
+      "gen_text": ". but a",
+      "ok": 0
+    },
+    {
+      "word": "respect",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "depth",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Deepest Egypt",
+      "ok": 0
+    },
+    {
+      "word": "ghost",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "reach",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.. reach",
+      "ok": 0
+    },
+    {
+      "word": "make",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "head",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes Yes Yes Yes..",
+      "ok": 0
+    },
+    {
+      "word": "catch",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes",
+      "ok": 0
+    },
+    {
+      "word": "line",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "focus",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes., starting",
+      "ok": 0
+    },
+    {
+      "word": "commercialization",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.: no",
+      "ok": 1
+    },
+    {
+      "word": "drag",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes..",
+      "ok": 1
+    },
+    {
+      "word": "room",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "YesYes Yes. Yes",
+      "ok": 1
+    },
+    {
+      "word": "make",
+      "label": 0,
+      "pred": null,
+      "gen_text": "that is",
+      "ok": 0
+    },
+    {
+      "word": "feeling",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.The captain said",
+      "ok": 0
+    },
+    {
+      "word": "drive",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. Yesyes Yes",
+      "ok": 0
+    },
+    {
+      "word": "position",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. #",
+      "ok": 1
+    },
+    {
+      "word": "narrowness",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Nagarum",
+      "ok": 1
+    },
+    {
+      "word": "section",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "spring",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.\u0422",
+      "ok": 1
+    },
+    {
+      "word": "vegetate",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "commission",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Yes Yes Yes",
+      "ok": 1
+    },
+    {
+      "word": "block",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.OCKOCK",
+      "ok": 0
+    },
+    {
+      "word": "one",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Yes.",
+      "ok": 1
+    },
+    {
+      "word": "pay",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.Pay.",
+      "ok": 1
+    },
+    {
+      "word": "carnival",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "keep",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 0
+    },
+    {
+      "word": "night",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes. No. No",
+      "ok": 0
+    },
+    {
+      "word": "worry",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "run",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    },
+    {
+      "word": "get",
+      "label": 0,
+      "pred": 1,
+      "gen_text": "Yes.Yay.",
+      "ok": 0
+    },
+    {
+      "word": "charge",
+      "label": 0,
+      "pred": 0,
+      "gen_text": "No.",
+      "ok": 1
+    },
+    {
+      "word": "play",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. Child.",
+      "ok": 1
+    },
+    {
+      "word": "catch",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes. two words",
+      "ok": 1
+    },
+    {
+      "word": "drive",
+      "label": 1,
+      "pred": null,
+      "gen_text": "",
+      "ok": 0
+    },
+    {
+      "word": "go",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.Briant",
+      "ok": 1
+    },
+    {
+      "word": "tape",
+      "label": 1,
+      "pred": 1,
+      "gen_text": "Yes.",
+      "ok": 1
+    }
+  ]
+}
