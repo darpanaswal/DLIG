@@ -11,7 +11,7 @@ Locate where the yes-bias enters. Checks:
      learn to stop).
 
 Usage:
-  python inspect.py --train_jsonl data/wic_train.jsonl
+  python inspect_train.py --train_jsonl data/wic_train.jsonl
 """
 
 import json
