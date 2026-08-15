@@ -2,8 +2,8 @@
 set -euo pipefail
 
 WALLTIME="00:50:00"
-LOG_DIR="runs/diagnose"
-LOG_FILE="${LOG_DIR}/diagnose.log"
+LOG_DIR="runs/pull"
+LOG_FILE="${LOG_DIR}/pull.log"
 
 # Submit if not already inside an OAR job
 if [ -z "${OAR_JOB_ID:-}" ]; then
@@ -23,9 +23,10 @@ fi
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-# echo "Running on $(hostname)"
-# echo "Repository: $(pwd)"
+echo "Running on $(hostname)"
+echo "Repository: $(pwd)"
 
-# git status
+git status
+git pull
 
-python3 diagnose.py --eval_json outputs/wic/eval.json
+# python diagnose.py --eval_json outputs/wic/eval.json
