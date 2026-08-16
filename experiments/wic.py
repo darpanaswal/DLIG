@@ -91,8 +91,6 @@ def build_arg_parser():
                    default=str(OUTPUT_DIR / "wic/wic_dlig.jsonl"))
     p.add_argument("--model_path", type=str, required=True)
     p.add_argument("--n", type=int, default=-1, help="-1 => all rows")
-    p.add_argument("--only_correct", action="store_true",
-                   help="attribute only examples the model got right")
     p.add_argument("--system", type=str, default="")
 
     p.add_argument("--num_shards", type=int, default=1)
@@ -195,9 +193,8 @@ def main():
         gen_text = tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
         pred = read_pred(gen_text)
         correct = (pred is not None and pred == r["label"])
-
-        if args.only_correct and not correct:
-            continue
+        # store EVERY example (correct, incorrect, and unparseable pred=None):
+        # failure modes of the Yes-biased model are the point of this analysis.
 
         keep_idx = input_token_indices(input_ids[0, :L].tolist(), tokenizer,
                                        user_prompt=prompt)
