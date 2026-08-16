@@ -16,7 +16,7 @@ disambiguation" is a real, measurable regularity rather than a cherry-pick.
 
 Usage:
   python -m helpers.analyze_wic_patterns --in_file outputs/wic/wic_dlig.jsonl
-  python -m helpers.analyze_wic_patterns --in_file ... --csv outputs/wic/features.csv
+  python -m helpers.analyze_wic_patterns --in_file outputs/wic/wic_dlig.jsonl --csv outputs/wic/features.csv
 """
 
 import os
@@ -60,12 +60,13 @@ def _clean_token(t):
 # ---- token-region masks (positional, not semantic) ------------------------
 
 def pivot_mask(tokens, word):
-    """Tokens whose cleaned form matches the pivot word (any occurrence)."""
+    """Tokens whose cleaned form exactly matches the pivot word.
+    Exact-only: the earlier substring variant over-matched short words and
+    inflated pivot_share; exact matching gave a cleaner, stronger effect."""
     w = word.strip().lower()
     m = np.zeros(len(tokens), dtype=bool)
     for i, t in enumerate(tokens):
-        ct = _clean_token(t)
-        if ct and (ct == w or (len(ct) >= 3 and ct in w) or (len(w) >= 3 and w in ct)):
+        if _clean_token(t) == w:
             m[i] = True
     return m
 
@@ -135,7 +136,9 @@ def example_features(row):
 
     return dict(
         idx=row["idx"], word=row.get("word", ""),
-        label=int(row["label"]), pred=int(row["pred"]), correct=bool(row["correct"]),
+        label=int(row["label"]),
+        pred=(int(row["pred"]) if row["pred"] is not None else None),
+        correct=bool(row["correct"]),
         layer_centroid=layer_centroid,
         frac_shallow=frac_shallow, frac_deep=frac_deep,
         pivot_share=pivot_share, ctx_pivot_ratio=ctx_pivot_ratio,
@@ -185,6 +188,9 @@ def contrast(feats, name, pos_pred, neg_pred):
     pos = [f for f in feats if pos_pred(f)]
     neg = [f for f in feats if neg_pred(f)]
     print(f"\n=== {name}  (pos={len(pos)}, neg={len(neg)}) ===")
+    if not pos or not neg:
+        print("  [skipped: empty group]")
+        return
     print(f"{'feature':<18}{'AUC':>8}{'|AUC-.5|':>10}{'p':>10}")
     rows = []
     for k in FEATURES:
@@ -195,44 +201,72 @@ def contrast(feats, name, pos_pred, neg_pred):
         print(f"{k:<18}{auc:>8.3f}{abs(auc-0.5):>10.3f}{p:>10.4f}  {star}")
 
 
+def confusion(feats):
+    from collections import Counter
+    c = Counter((f["label"], f["pred"]) for f in feats)
+    print("\n[confusion] (label, pred) counts:")
+    for k in sorted(c, key=lambda x: (x[0], str(x[1]))):
+        print(f"    label={k[0]} pred={k[1]}: {c[k]}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in_file", default="outputs/wic/wic_dlig.jsonl")
     ap.add_argument("--csv", default=None, help="optional: dump per-example features")
-    ap.add_argument("--correct_only", action="store_true",
-                    help="restrict contrasts to correctly-classified examples")
     args = ap.parse_args()
 
     rows = load_rows(args.in_file)
     feats = [f for f in (example_features(r) for r in rows) if f is not None]
-    print(f"[info] {len(feats)} examples with attribution.")
+    # pred can be None (model emitted neither Yes nor No); tag those out of the
+    # correct/incorrect contrasts so they don't masquerade as a predicted class.
+    for f in feats:
+        f["parsed"] = f["pred"] in (0, 1)
+    n_none = sum(not f["parsed"] for f in feats)
+    print(f"[info] {len(feats)} examples with attribution "
+          f"({n_none} with unparseable pred, excluded from pred-based contrasts).")
+
+    confusion(feats)
 
     if args.csv:
         os.makedirs(os.path.dirname(args.csv) or ".", exist_ok=True)
         with open(args.csv, "w") as fh:
-            cols = list(feats[0].keys())
+            cols = [c for c in feats[0].keys()]
             fh.write(",".join(cols) + "\n")
             for f in feats:
                 fh.write(",".join(str(f[c]) for c in cols) + "\n")
         print(f"[info] wrote {args.csv}")
 
-    pool = [f for f in feats if f["correct"]] if args.correct_only else feats
+    P = [f for f in feats if f["parsed"]]  # parseable only for pred-based splits
 
-    # sense contrast (label 0 = different sense, 1 = same sense)
-    contrast(pool, "different-sense (pos) vs same-sense (neg)",
-             lambda f: f["label"] == 0, lambda f: f["label"] == 1)
+    # --- NO class: read-the-context (correct) vs Yes-bias default (incorrect) --
+    contrast(P, "gold-No: correct=said-No (pos) vs incorrect=Yes-bias (neg)",
+             lambda f: f["label"] == 0 and f["correct"],
+             lambda f: f["label"] == 0 and not f["correct"])
 
-    # answer contrast (what the model committed to)
-    contrast(pool, "predicted-No (pos) vs predicted-Yes (neg)",
-             lambda f: f["pred"] == 0, lambda f: f["pred"] == 1)
+    # --- YES class: correct vs the rare Yes-error --------------------------------
+    contrast(P, "gold-Yes: correct=said-Yes (pos) vs incorrect=said-No (neg)",
+             lambda f: f["label"] == 1 and f["correct"],
+             lambda f: f["label"] == 1 and not f["correct"])
 
-    # correctness (does attribution geometry track being right) — full pool
-    contrast(feats, "correct (pos) vs incorrect (neg)",
+    # --- WHEN THE MODEL SAYS YES: real Yes vs defaulted Yes ----------------------
+    # The bias test: among predicted-Yes, does attribution distinguish a genuine
+    # same-sense read (gold-Yes) from a defaulted Yes on a different-sense item?
+    contrast(P, "predicted-Yes: genuine=gold-Yes (pos) vs defaulted=gold-No (neg)",
+             lambda f: f["pred"] == 1 and f["label"] == 1,
+             lambda f: f["pred"] == 1 and f["label"] == 0)
+
+    # --- WHEN THE MODEL SAYS NO: real No vs the rare mistaken No -----------------
+    contrast(P, "predicted-No: genuine=gold-No (pos) vs mistaken=gold-Yes (neg)",
+             lambda f: f["pred"] == 0 and f["label"] == 0,
+             lambda f: f["pred"] == 0 and f["label"] == 1)
+
+    # --- pooled: does attribution geometry track correctness at all -------------
+    contrast(P, "pooled: correct (pos) vs incorrect (neg)",
              lambda f: f["correct"], lambda f: not f["correct"])
 
     print("\nAUC ~0.5 = no separation; further from .5 = feature tracks the split.")
-    print("Read effect sizes qualitatively; treat p as descriptive (8 features, "
-          "multiple contrasts — no correction applied).")
+    print("Read effect sizes qualitatively; p is descriptive (8 features x 5 "
+          "contrasts, no multiple-comparison correction).")
 
 
 if __name__ == "__main__":
