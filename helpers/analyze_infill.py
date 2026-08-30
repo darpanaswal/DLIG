@@ -1,4 +1,4 @@
-# helpers/plot_infill.py
+# helpers/analyze_infill.py
 import os
 import json
 import math
@@ -139,6 +139,56 @@ def aggregate_infill(input_file, layer_agg="sum", split_rouge=None,
 
     meta = {"counts": {k: len(v) for k, v in counts.items()}, "per_story": per_story}
     return by_step, meta
+
+
+def report_empty_steps(input_file, eps=1e-9):
+    """Per-step surviving-n (n_scoreable>0) vs dropped (F_t==0) for the
+    self-generated framing — the cells aggregate_infill() skips via
+    `if sd.get("skipped") or sd.get("n_scoreable") == 0: continue`. Regenerates
+    the §7 footnote sample sizes (n=544 at t=1, n>=981 at t>=5) from the jsonl.
+
+    Also cross-tabs n_scoreable==0 against total-mass<=eps: on this data the two
+    coincide exactly (no off-diagonal cells), which is what lets §7 exclude
+    degenerate cells 'for the same reason as' the WiC depth footnote (§5.1) — the
+    two scripts detect the no-committed-target condition by different signals
+    (token count vs. total mass) that happen to select the identical cells."""
+    if not os.path.exists(input_file):
+        print(f"[ERROR] missing: {input_file}")
+        return None
+    surv, dropp = {}, {}
+    ct = {(True, True): 0, (True, False): 0, (False, True): 0, (False, False): 0}
+    with open(input_file) as f:
+        for line in f:
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if len(row.get("signed_dist", [])) == 0:
+                continue
+            for sd in row.get("steps_data", []):
+                s = sd["step"]
+                nsc = sd.get("n_scoreable", None)
+                lay = sd.get("layers", {})
+                m = (sum(np.abs(np.array(v, float)).sum() for v in lay.values())
+                     if lay else 0.0)
+                sc0 = bool(sd.get("skipped", False) or nsc == 0)
+                m0 = (m <= eps)
+                ct[(sc0, m0)] += 1
+                d = dropp if sc0 else surv
+                d[s] = d.get(s, 0) + 1
+    steps = sorted(set(surv) | set(dropp))
+    print(f"[infill empty-step report] eps={eps:g}")
+    print(f"  {'step':>4} {'surv':>6} {'dropped':>7} {'total':>6}")
+    for s in steps:
+        sv, dp = surv.get(s, 0), dropp.get(s, 0)
+        print(f"  {s:>4} {sv:>6} {dp:>7} {sv+dp:>6}")
+    print(f"  footnote: surviving n per step -> "
+          f"{{{', '.join(f't{s}:{surv.get(s, 0)}' for s in steps)}}}")
+    print(f"  cross-tab (n_scoreable==0 vs mass<=eps): "
+          f"both0={ct[(True, True)]}, sc0&mass>0={ct[(True, False)]}, "
+          f"sc>0&mass0={ct[(False, True)]}, both>0={ct[(False, False)]}")
+    agree = ct[(True, False)] == 0 and ct[(False, True)] == 0
+    print(f"  -> criteria {'COINCIDE exactly' if agree else 'DIVERGE'} on this data")
+    return {"surviving": surv, "dropped": dropp, "crosstab": ct}
 
 
 def _draw_infill_axis(ax, groups, cmap, max_abs_dist, bin_width, min_count):
@@ -329,6 +379,101 @@ def plot_r_vs_step(per_story, field, output_file):
     return dict(zip(steps, rs))
 
 
+def _mannwhitney_auc_p(a, b, n_boot=2000, seed=0):
+    """AUC that a random high-ROUGE story (a) outranks a random low-ROUGE story
+    (b) on the given mass, with a two-sided normal-approx p and a percentile
+    bootstrap 95% CI. 0.5 = no difference; >0.5 = high-ROUGE carries more mass.
+    Pure-numpy (no scipy dependency), tie-corrected rank-sum."""
+    a = np.asarray(a, float); b = np.asarray(b, float)
+    a = a[np.isfinite(a)]; b = b[np.isfinite(b)]
+    n1, n2 = len(a), len(b)
+    if n1 == 0 or n2 == 0:
+        return float("nan"), float("nan"), float("nan"), float("nan"), n1, n2
+    concat = np.concatenate([a, b])
+    ranks = _rankdata_avg(concat)                    # average ranks (tie-safe)
+    r1 = ranks[:n1].sum()
+    u1 = r1 - n1 * (n1 + 1) / 2.0
+    auc = u1 / (n1 * n2)
+    # two-sided normal approx with tie correction on the U statistic
+    _, counts = np.unique(concat, return_counts=True)
+    n = n1 + n2
+    tie = (counts ** 3 - counts).sum()
+    sd = math.sqrt(n1 * n2 / 12.0 * ((n + 1) - tie / (n * (n - 1)))) if n > 1 else 0.0
+    mu = n1 * n2 / 2.0
+    z = (u1 - mu) / sd if sd > 0 else 0.0
+    p = 2 * (1 - 0.5 * (1 + math.erf(abs(z) / math.sqrt(2))))
+    # percentile bootstrap CI over stories (resample each group independently)
+    rng = np.random.default_rng(seed)
+    boot = np.empty(n_boot)
+    for k in range(n_boot):
+        ba = a[rng.integers(0, n1, n1)]
+        bb = b[rng.integers(0, n2, n2)]
+        rr = _rankdata_avg(np.concatenate([ba, bb]))
+        boot[k] = (rr[:n1].sum() - n1 * (n1 + 1) / 2.0) / (n1 * n2)
+    lo, hi = np.percentile(boot, [2.5, 97.5])
+    return float(auc), float(p), float(lo), float(hi), n1, n2
+
+
+def _rankdata_avg(x):
+    """Average ranks (1-based), ties share the mean of their rank positions."""
+    order = np.argsort(x, kind="mergesort")
+    ranks = np.empty(len(x), float)
+    sx = x[order]
+    i = 0
+    while i < len(sx):
+        j = i
+        while j + 1 < len(sx) and sx[j + 1] == sx[i]:
+            j += 1
+        ranks[order[i:j + 1]] = (i + j) / 2.0 + 1.0
+        i = j + 1
+    return ranks
+
+
+def compute_mass_auc(per_story, split_rouge, field="total_mass"):
+    """Two-group test: do high-ROUGE stories carry MORE context mass than
+    low-ROUGE ones? Splits stories at `split_rouge` and reports Mann-Whitney
+    AUC (high vs low) pooled over steps AND per denoising step, each with a
+    95% bootstrap CI and two-sided p. Prints [CAPTION] lines for the appendix;
+    returns a dict. This is the honest test behind the 'better infills show
+    higher context dependence' claim -- the per-step AUC says whether the
+    high>=low gap holds at 'almost every step' or only late in denoising."""
+    if split_rouge is None:
+        print("[WARN] compute_mass_auc needs --split_rouge; skipping.")
+        return {}
+    rows = [d for d in per_story if np.isfinite(d.get(field, np.nan))]
+    if len(rows) < 6:
+        print("[INFO] mass AUC: insufficient per-story data.")
+        return {}
+
+    def _split(rws):
+        hi = [d[field] for d in rws if d["rouge1"] >= split_rouge]
+        lo = [d[field] for d in rws if d["rouge1"] < split_rouge]
+        return hi, lo
+
+    out = {}
+    hi, lo = _split(rows)
+    auc, p, clo, chi, nh, nl = _mannwhitney_auc_p(hi, lo)
+    out["pooled"] = (auc, p, clo, chi, nh, nl)
+    # NOTE: the pooled test stacks all (story, step) rows, so one story's steps
+    # are counted as independent -> n is inflated and the pooled p is optimistic.
+    # Prefer the per-step AUCs below (each story contributes once per step) when
+    # wording the 'at almost every step' claim.
+    print(f"[CAPTION] {field} high-vs-low ROUGE AUC (pooled; pseudo-replicated, "
+          f"see per-step): AUC={auc:.3f} [{clo:.3f},{chi:.3f}]  p={p:.2e}  "
+          f"(n_high={nh}, n_low={nl})  [0.5=no diff, >0.5=high carries more]")
+
+    steps = sorted({d["step"] for d in rows})
+    print(f"[CAPTION] {field} high-vs-low ROUGE AUC per step:")
+    for s in steps:
+        hi_s, lo_s = _split([d for d in rows if d["step"] == s])
+        a, pp, l, h, nhs, nls = _mannwhitney_auc_p(hi_s, lo_s, seed=s)
+        out[s] = (a, pp, l, h, nhs, nls)
+        star = "***" if pp < 1e-3 else "**" if pp < 1e-2 else "*" if pp < 5e-2 else "n.s."
+        print(f"    t={s:2d}: AUC={a:.3f} [{l:.3f},{h:.3f}]  p={pp:.2e} {star:>4}  "
+              f"(n_high={nhs}, n_low={nls})")
+    return out
+
+
 def compute_ratio_r(per_story, step=None):
     """Right/left mass-ratio vs ROUGE is a null result reported as a Pearson r
     in text, not as a figure. Compute and print r, n, and mean ratio; emit no
@@ -389,6 +534,11 @@ def main():
                         help="infill: print Pearson r(right/left ratio, ROUGE-1), n, and "
                              "mean ratio for the caption. Null result -- reported as a "
                              "number, no figure (replaces the redundant ratio_scatter).")
+    parser.add_argument("--mass_auc", action="store_true",
+                        help="infill: print Mann-Whitney AUC for total context mass, "
+                             "high-vs-low ROUGE cohorts, pooled AND per denoising step "
+                             "(with bootstrap CIs and p). Tests whether better infills "
+                             "actually carry more mass; needs --split_rouge.")
     parser.add_argument("--mass_scatter", action="store_true",
                         help="infill: emit TOTAL context-mass vs ROUGE-1 scatter + the "
                              "r(total_mass,ROUGE)-vs-denoising-step curve (the magnitude/trajectory test).")
@@ -398,6 +548,11 @@ def main():
                         help="emit the signed-distance profile figure (small-multiples "
                              "grid). Off by default so scatter-only runs don't "
                              "regenerate it as a side effect.")
+    parser.add_argument("--empty_report", action="store_true",
+                        help="print per-step surviving/dropped cell counts (the "
+                             "F_t==0 cells aggregate_infill skips) plus the "
+                             "zero-scoreable/zero-mass cross-tab, then exit; "
+                             "regenerates the §7 footnote sample sizes")
 
     args = parser.parse_args()
 
@@ -405,6 +560,10 @@ def main():
     input_file = args.input_file or os.path.join(
         args.out_dir,
         f"{args.family.lower()}_{args.target_mode}.jsonl")
+
+    if args.empty_report:
+        report_empty_steps(input_file)
+        return
 
     # resolve --split_rouge: float, or 'median' computed over stories in the file
     if args.split_rouge is not None:
@@ -461,6 +620,9 @@ def main():
 
     if args.ratio_r:
         compute_ratio_r(meta["per_story"], step=args.scatter_step)
+
+    if args.mass_auc:
+        compute_mass_auc(meta["per_story"], args.split_rouge, field="total_mass")
 
     if args.mass_scatter:
         # total-context-mass vs ROUGE scatter (single step or pooled)

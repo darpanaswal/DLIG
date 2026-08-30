@@ -79,7 +79,7 @@ BASE_NAME="${OUT_FILE%.jsonl}"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Running WiC self-generated DLIG across shards..."
 PIDS=()
 for i in $(seq 0 $((N_GPUS-1))); do
-    CUDA_VISIBLE_DEVICES=$i python -u -m experiments.wic \
+    CUDA_VISIBLE_DEVICES=$i python -u -m experiments.wic.wic \
         "${COMMON_ARGS[@]}" \
         --num_shards $N_GPUS \
         --shard_id $i \
@@ -99,6 +99,6 @@ rm "${BASE_NAME}_shard"*.jsonl
 echo "----------------------------------------"
 echo "DONE. Output: ${OUT_FILE}"
 echo "Next: plot per-example panels, e.g."
-echo "  python -m experiments.plot_wic_dlig --in_file ${OUT_FILE} --pick correct_no --out_file outputs/wic/figs/correct_no.png"
-echo "  python -m experiments.plot_wic_dlig --in_file ${OUT_FILE} --pick correct_yes --out_file outputs/wic/figs/correct_yes.png"
-echo "  python -m experiments.plot_wic_dlig --in_file ${OUT_FILE} --idx <N> --per_step --out_file outputs/wic/figs/evolution.png"
+echo "  python -m helpers.analyze_wic --panel --dlig ${OUT_FILE} --panel_pick correct_no --panel_out_file outputs/wic/figs/correct_no.png"
+echo "  python -m helpers.analyze_wic --panel --dlig ${OUT_FILE} --panel_pick correct_yes --panel_out_file outputs/wic/figs/correct_yes.png"
+echo "  python -m helpers.analyze_wic --panel --dlig ${OUT_FILE} --panel_idx <N> --panel_per_step --panel_out_file outputs/wic/figs/evolution.png"

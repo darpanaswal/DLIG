@@ -1,8 +1,8 @@
 """
 verify_completeness.py — empirical proof that the DLIG implementation is correct.
 
-Place at repo root (same level as main.py / contrastive_runner.py), since it uses
-the same package import paths.
+Lives under experiments/theorems/, imported by the other experiment scripts via
+the experiments.theorems.verify_completeness package path.
 
 WHAT THIS PROVES
 ----------------

@@ -32,7 +32,7 @@ mkdir -p "${OUT_DIR}"
 echo "Log file          : ${LOG_FILE}"
 echo "----------------------------------------"
 
-python -u -m experiments.analyze_prosqa_dlig \
+python -u -m helpers.analyze_prosqa \
     --dlig_file "${OUT_DLIG}" \
     --graph_labels "${GRAPH}" \
     --out_dir "${OUT_DIR}"

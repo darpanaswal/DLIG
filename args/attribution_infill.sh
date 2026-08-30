@@ -79,7 +79,7 @@ BASE_NAME="${OUT_FILE%.jsonl}"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Executing ROCStories Infilling Attribution Across Shards..."
 PIDS=()
 for i in $(seq 0 $((N_GPUS-1))); do
-    CUDA_VISIBLE_DEVICES=$i python -u -m experiments.attribution_infill \
+    CUDA_VISIBLE_DEVICES=$i python -u -m experiments.infill.attribution_infill \
         "${COMMON_ARGS[@]}" \
         --num_shards $N_GPUS \
         --shard_id $i \

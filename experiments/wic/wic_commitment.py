@@ -44,7 +44,7 @@ from models.backends import build_backend
 from utils.config import OUTPUT_DIR
 from models.model_manager import ModelManager
 from experiments.theorems.verify_completeness import set_seed, build_prompt_inputs
-from experiments.wic import wic_prompt, read_pred, load_wic
+from experiments.wic.wic import wic_prompt, read_pred, load_wic
 
 
 def resolve_yes_no_ids(tokenizer):

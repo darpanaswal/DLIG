@@ -46,7 +46,7 @@ from models.model_manager import ModelManager
 from experiments.theorems.verify_completeness import (
     TrajRecorder, set_seed, build_prompt_inputs,
 )
-from experiments.contrastive_attribution import clean_token, input_token_indices
+from experiments.contrastive.contrastive_attribution import clean_token, input_token_indices
 
 
 def wrong_target(gold: str, gold_option: str, wrong_option: str) -> str:

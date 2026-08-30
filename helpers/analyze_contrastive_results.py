@@ -1,4 +1,4 @@
-# experiments/visualize_contrastive_results.py
+# helpers/analyze_contrastive_results.py
 """
 Visualization utilities for contrastive ΔDLIG outputs.
 

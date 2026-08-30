@@ -29,4 +29,4 @@ echo "Repository: $(pwd)"
 git status
 git pull
 
-# python diagnose.py --eval_json outputs/wic/eval.json
+# python -m helpers.analyze_wic_bias --eval_json outputs/wic/eval.json

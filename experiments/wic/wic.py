@@ -44,7 +44,7 @@ from models.model_manager import ModelManager
 from experiments.theorems.verify_completeness import (
     set_seed, build_prompt_inputs,
 )
-from experiments.contrastive_attribution import clean_token, input_token_indices
+from experiments.contrastive.contrastive_attribution import clean_token, input_token_indices
 
 
 def wic_prompt(sentence1: str, sentence2: str, word: str) -> str:

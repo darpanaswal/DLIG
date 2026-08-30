@@ -561,7 +561,7 @@ class DLIGAttribution:
         return result
 
     # ------------------------------------------------------------------ #
-    #  ORIGINAL: self-contained (kept for backward compat + main.py)
+    #  ORIGINAL: self-contained (kept for backward compat)
     # ------------------------------------------------------------------ #
     def compute_dlig_at_timestep(self, step, x_t, mask_token_id, original_length):
         """

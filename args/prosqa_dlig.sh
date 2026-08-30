@@ -12,7 +12,7 @@ VENV="dlig/bin/activate"                # switch to diffu/bin/activate if runnin
 
 # --- Model / data ---
 MODEL_PATH="models/diffugpt-m-prosqa"   # finetuned checkpoint dir
-BUCKETS="outputs/prosqa_buckets_full.jsonl"
+BUCKETS="outputs/prosqa/prosqa_buckets_full.jsonl"
 
 # --- Groups ---
 DLIG_GROUPS=(success fail)                   # off dropped (paper filtering)
@@ -70,7 +70,7 @@ echo "----------------------------------------"
 
 # ---- Step 1: graph labels (CPU, seconds, idempotent) ----
 echo "[$(date +'%F %T')] [STEP 1] Graph labels -> ${GRAPH}" | tee -a "${LOG_FILE}"
-python -u -m experiments.prosqa_graph_labels \
+python -u -m experiments.prosqa.prosqa_graph_labels \
     --buckets "${BUCKETS}" \
     --out_file "${GRAPH}"
 
@@ -79,7 +79,7 @@ echo "[$(date +'%F %T')] [STEP 2] Starting DLIG shards..." | tee -a "${LOG_FILE}
 BASE_DLIG="${OUT_DLIG%.jsonl}"
 PIDS=()
 for i in $(seq 0 $((N_GPUS-1))); do
-    CUDA_VISIBLE_DEVICES=$i python -u -m experiments.prosqa_contrastive_dlig \
+    CUDA_VISIBLE_DEVICES=$i python -u -m experiments.prosqa.prosqa_contrastive_dlig \
         --graph_labels "${GRAPH}" \
         --out_file "${OUT_DLIG}" \
         --model_path "${MODEL_PATH}" \
@@ -108,7 +108,7 @@ rm "${BASE_DLIG}_shard"*.jsonl
 
 # ---- Step 3: analysis A-D (CPU) ----
 echo "[$(date +'%F %T')] [STEP 3] Analysis..." | tee -a "${LOG_FILE}"
-python -u -m experiments.analyze_prosqa_dlig \
+python -u -m helpers.analyze_prosqa \
     --dlig_file "${OUT_DLIG}" \
     --graph_labels "${GRAPH}" \
     --out_dir "${OUT_DIR}"

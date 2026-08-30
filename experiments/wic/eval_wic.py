@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# experiments/eval_wic_simple.py
+# experiments/wic/eval_wic.py
 """
 Dead-simple WiC eval. Generate the answer, read the first Yes/No, compare to label.
 No forced-choice, no logit reading, no masked-slot tricks.
 
 Usage:
-  python -u -m experiments.eval_wic_simple \
+  python -u -m experiments.wic.eval_wic \
       --model_path models/diffugpt-m-wic \
       --wic_jsonl data/wic_test_raw.jsonl
 """

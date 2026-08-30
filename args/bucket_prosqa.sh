@@ -8,7 +8,7 @@ MODE="${1:-full}"          # matches eval mode: probe | full
 
 LOG_DIR="runs/train_prosqa_ddmsft"
 IN_FILE="data/prosqa_eval_${MODE}.jsonl"
-OUT_FILE="outputs/prosqa_buckets_${MODE}.jsonl"
+OUT_FILE="outputs/prosqa/prosqa_buckets_${MODE}.jsonl"
 ########################################
 
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
@@ -30,7 +30,7 @@ cd "$(dirname "${SCRIPT_PATH}")"
 source diffu/bin/activate
 
 echo "[$(date +'%F %T')] bucketing ${IN_FILE}"
-python -u -m experiments.bucket_prosqa \
+python -u -m experiments.prosqa.bucket_prosqa \
     --in_file  "${IN_FILE}" \
     --out_file "${OUT_FILE}"
 echo "[$(date +'%F %T')] done -> ${OUT_FILE}"

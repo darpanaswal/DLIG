@@ -84,7 +84,7 @@ echo "----------------------------------------"
 echo "[$(date +'%F %T')] [RUN] WiC accuracy gate" | tee -a "${LOG_FILE}"
 
 CUDA_VISIBLE_DEVICES=0 \
-    "${PYTHON}" -u eval_wic.py \
+    "${PYTHON}" -u -m experiments.wic.eval_wic \
     --model_path "${MODEL_PATH}" \
     --wic_jsonl "${WIC_JSONL}" \
     --out_file "${OUT_FILE}" \

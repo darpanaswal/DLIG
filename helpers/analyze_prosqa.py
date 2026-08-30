@@ -1,13 +1,12 @@
-#!/usr/bin/env python3
-# experiments/analyze_prosqa_dlig.py
+# helpers/analyze_prosqa.py
 r"""
-analyze_prosqa_dlig.py — analyses A-D over prosqa_contrastive_dlig.py output.
+analyze_prosqa.py — analyses A-D over prosqa_contrastive_dlig.py output.
 
 Per example, per (layer, step), let s+[i], s-[i] be per-token DLIG toward
 y+ (gold) and y- (wrong option). Define
 
     d[i]      = s+[i] - s-[i]                    # contrastive attribution
-    d_beh[i]  = d[i]  if group == success        # behavior-aligned direction:
+    d_behavior[i]  = d[i]  if group == success        # behavior-aligned direction:
               = -d[i] if group == fail           # fail => model preferred y-
 
 Token sets come from span_ids -> graph labels:
@@ -23,7 +22,7 @@ Token sets come from span_ids -> graph labels:
     (success group), Wilcoxon signed-rank vs 0, plus an empirical null from
     random edge subsets with the same edge count as the gold path.
 
-(B) Failure faithfulness (fail group, behavior-aligned d_beh).
+(B) Failure faithfulness (fail group, behavior-aligned d_behavior).
     chain_mass vs gold_mass: normalized positive-mass fraction on CHAIN\GOLD
     vs GOLD\CHAIN tokens (disjoint sets, per-token normalized to remove set
     size effects). Faithful attribution => mass tracks CHAIN, not GOLD.
@@ -35,7 +34,7 @@ Token sets come from span_ids -> graph labels:
     ROCStories mass->ROUGE result to discrete correctness).
 
 (D) Hop-resolved profile + localization.
-    Per gold-path hop h (root fact = hop 0), mean per-token d_beh among
+    Per gold-path hop h (root fact = hop 0), mean per-token d_behavior among
     successes, normalized within example by mean over hops. Chain-following
     => mass spread along hops; shortcut => mass only at h=0 and h=k.
     Plus (layer, step) heatmap of gold-mass fraction.
@@ -190,9 +189,9 @@ def pos_mass(d, idx):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dlig_file", required=True,
+    ap.add_argument("--dlig_file", default="outputs/prosqa/prosqa_dlig.jsonl",
                     help="jsonl from prosqa_contrastive_dlig.py (cat shards first)")
-    ap.add_argument("--graph_labels", required=True)
+    ap.add_argument("--graph_labels", default="outputs/prosqa/prosqa_graph_labels.jsonl")
     ap.add_argument("--out_dir", default="outputs/prosqa")
     ap.add_argument("--n_null", type=int, default=200,
                     help="random edge subsets per example for the (A) null")
@@ -259,7 +258,7 @@ def main():
                 continue
             n_used += 1
             d = d_pool
-            d_beh = sign * d
+            d_behavior = sign * d
 
             # ---- (A) precision vs chance + random null (success only) ----
             # ---- (A/E) gold-path precision, gold-direction d, ALL examples ----
@@ -301,12 +300,12 @@ def main():
             gold_only = GOLD - CHAIN
             if rec["group"] == "fail" and chain_only and gold_only:
                 # per-token positive behavior-aligned mass
-                fail_chain.append(pos_mass(d_beh, chain_only) / len(chain_only))
-                fail_gold.append(pos_mass(d_beh, gold_only) / len(gold_only))
+                fail_chain.append(pos_mass(d_behavior, chain_only) / len(chain_only))
+                fail_gold.append(pos_mass(d_behavior, gold_only) / len(gold_only))
             if rec["group"] == "success" and chain_only and gold_only:
                 succ_chain_ctrl.append(
-                    pos_mass(d_beh, chain_only) / len(chain_only)
-                    - pos_mass(d_beh, gold_only) / len(gold_only))
+                    pos_mass(d_behavior, chain_only) / len(chain_only)
+                    - pos_mass(d_behavior, gold_only) / len(gold_only))
 
             # all-fails signed measure (uses every fail with a parsed chain,
             # not only those where CHAIN and GOLD partly disagree): per-token
@@ -314,15 +313,15 @@ def main():
             rest = FACT - CHAIN
             if rec["group"] == "fail" and CHAIN and rest:
                 fail_chain_vs_rest.append(
-                    pos_mass(d_beh, CHAIN) / len(CHAIN)
-                    - pos_mass(d_beh, rest) / len(rest))
+                    pos_mass(d_behavior, CHAIN) / len(CHAIN)
+                    - pos_mass(d_behavior, rest) / len(rest))
             # mirror control on successes: GOLD vs FACT \ GOLD (should be > 0
             # by (A); confirms the measure itself behaves).
             rest_g = FACT - GOLD
             if rec["group"] == "success" and rest_g:
                 succ_gold_vs_rest.append(
-                    pos_mass(d_beh, GOLD) / len(GOLD)
-                    - pos_mass(d_beh, rest_g) / len(rest_g))
+                    pos_mass(d_behavior, GOLD) / len(GOLD)
+                    - pos_mass(d_behavior, rest_g) / len(rest_g))
 
             # ---- (C) pooled mass ----
             ex_mass = float(np.mean(np.abs(d[list(FACT)])))
@@ -337,7 +336,7 @@ def main():
                 for h in range(0, k + 1):
                     idx = np.where(hops == h)[0]
                     if len(idx):
-                        prof[h] = np.mean(d_beh[idx])
+                        prof[h] = np.mean(d_behavior[idx])
                 # normalize by mean |prof|, not |mean prof|: signed hop values
                 # can cancel, making |mean| ~ 0 and exploding the ratio (the
                 # unstable k=5 profile in the first run).
@@ -454,6 +453,15 @@ def main():
         f.write(report + "\n")
 
     # =========================== plots ===========================
+    # Set global font sizes for all plots to ensure legibility in subfigures
+    plt.rcParams.update({
+        'font.size': 14,
+        'axes.labelsize': 14,
+        'xtick.labelsize': 12,
+        'ytick.labelsize': 12,
+        'legend.fontsize': 12
+    })
+
     # (A) gap histogram vs null
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.hist(prec_gap, bins=30, alpha=0.7, label="gold path", density=True)
@@ -461,79 +469,114 @@ def main():
         ax.hist(prec_gap_null, bins=30, alpha=0.5, label="random-edge null",
                 density=True)
     ax.axvline(0, color="k", lw=0.8)
-    ax.set_xlabel("positive-mass precision  -  chance")
-    ax.set_title("(A) DLIG mass concentrates on the gold reasoning path")
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(os.path.join(args.out_dir, "A_path_precision.png"), dpi=200)
 
-    # (B) fail-group paired masses
-    fig, ax = plt.subplots(figsize=(5, 4))
-    ax.boxplot([fail_chain, fail_gold], tick_labels=["model chain\\gold",
-                                                     "gold\\model chain"])
-    ax.set_ylabel("per-token behavior-aligned positive mass")
-    ax.set_title(f"(B) Failures: attribution tracks the model's own chain\n"
-                 f"AUC={auc_b:.3f}")
-    fig.tight_layout()
-    fig.savefig(os.path.join(args.out_dir, "B_failure_faithfulness.png"), dpi=200)
+    # --- MODIFIED: Increased fontsize to 18 for Figure 1(a) ---
+    ax.set_xlabel("Positive-Mass Precision  -  Chance", fontsize=18)
+    ax.set_ylabel("Density", fontsize=18)
+    # ----------------------------------------------------------
 
-    # (C) mass violin + per-step AUC
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    axes[0].violinplot([mass_by_group["success"], mass_by_group["fail"]],
-                       showmeans=True)
-    axes[0].set_xticks([1, 2], ["success", "fail"])
-    axes[0].set_ylabel("mean per-token |dDLIG|")
-    axes[0].set_title(f"(C) Reliance vs correctness  AUC={auc_c:.3f}")
-    ss = sorted(step_aucs)
-    axes[1].plot(ss, [step_aucs[s] for s in ss], marker="o")
-    axes[1].axhline(0.5, color="k", ls="--", lw=0.8)
-    axes[1].set_xlabel("denoising step t")
-    axes[1].set_ylabel("AUC")
-    axes[1].set_title("per-step AUC (mass -> correctness)")
-    fig.tight_layout()
-    fig.savefig(os.path.join(args.out_dir, "C_mass_predicts_correctness.png"), dpi=200)
+    # Increase legend font size (e.g., to 14 or 16)
+    ax.legend(fontsize=14) 
+    fig.tight_layout(pad=0.5)
+    fig.savefig(os.path.join(args.out_dir, "A_path_precision.png"), dpi=200, bbox_inches='tight')
 
-    # (D) hop profiles per k + (layer, step) heatmap of gold-mass fraction
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+    # (C+E) magnitude vs location, both by outcome, side by side.
+    # Left: mean per-token |d| over fact tokens (amount).
+    # Right: gold-path precision gap (placement).
+    # Rendered as overlaid density histograms (success vs fail) with the
+    # quantity on the x-axis and frequency on the y-axis: unlike the violins,
+    # the reader sees directly WHERE the mass concentrates (x position of the
+    # bulk) and what the spread is (histogram width). A dashed vertical line
+    # marks each group mean. The two panels share the same visual grammar so
+    # the contrast reads at a glance: magnitude (left) shifts between success
+    # and fail, location (right) does not. The per-step AUC curve is dropped
+    # from the figure; step_aucs is still written to the text report.
+    C_SUCCESS = "#2c7fb8"   # blue
+    C_FAIL = "#d95f0e"      # orange
+
+    def _overlaid_hist(ax, succ, fail, xlabel, vline0=False):
+        succ = np.asarray(succ, float)
+        fail = np.asarray(fail, float)
+        succ = succ[np.isfinite(succ)]
+        fail = np.asarray(fail)[np.isfinite(fail)]
+        lo = min(succ.min(), fail.min())
+        hi = max(succ.max(), fail.max())
+        bins = np.linspace(lo, hi, 26)
+        for data, color, lab in ((succ, C_SUCCESS, "success"),
+                                 (fail, C_FAIL, "fail")):
+            ax.hist(data, bins=bins, density=True, alpha=0.35, color=color)
+            ax.hist(data, bins=bins, density=True, histtype="step",
+                    linewidth=1.8, color=color,
+                    label=f"{lab} (n={len(data)})")
+        ax.axvline(succ.mean(), color=C_SUCCESS, ls="--", lw=2)
+        ax.axvline(fail.mean(), color=C_FAIL, ls="--", lw=2)
+        if vline0:
+            ax.axvline(0, color="k", ls=":", lw=1)
+        ax.set_xlabel(xlabel, fontsize=9)
+        ax.set_ylabel("Density", fontsize=9)
+        ax.tick_params(labelsize=8)
+        ax.grid(axis="y", alpha=0.3)
+        ax.legend(frameon=False, fontsize=8)
+
+    if len(prec_s) and len(prec_f):
+        # Short-and-wide: two panels in a single low row removes the vertical
+        # whitespace the tall violins wasted.
+        fig, axes = plt.subplots(1, 2, figsize=(9, 2.0))
+        _overlaid_hist(axes[0], mass_by_group["success"], mass_by_group["fail"],
+                       r"Mean per-token $|d|$ over fact tokens")
+        _overlaid_hist(axes[1], prec_s, prec_f,
+                       r"Gold-path precision $-$ chance", vline0=True)
+        fig.tight_layout(pad=0.5)
+        fig.savefig(os.path.join(args.out_dir, "CE_magnitude_vs_location.png"),
+                    dpi=200, bbox_inches='tight')
+    else:
+        # fallback: magnitude alone if the precision split is empty
+        fig, ax = plt.subplots(figsize=(5, 3.1))
+        _overlaid_hist(ax, mass_by_group["success"], mass_by_group["fail"],
+                       r"Mean per-token $|d|$ over fact tokens")
+        fig.tight_layout(pad=0.5)
+        fig.savefig(os.path.join(args.out_dir, "C_magnitude.png"),
+                    dpi=200, bbox_inches='tight')
+
+    # (D1) hop-resolved profile per path length k
+    fig, ax = plt.subplots(figsize=(5.5, 4))
     for k in sorted(hop_profiles):
         arr = np.array(hop_profiles[k])
         if len(arr) < 5:
             continue
-        axes[0].errorbar(range(k + 1), np.nanmean(arr, 0),
-                         yerr=np.nanstd(arr, 0) / np.sqrt(len(arr)),
-                         marker="o", label=f"k={k} (n={len(arr)})")
-    axes[0].set_xlabel("hop (0 = root fact, k = answer edge)")
-    axes[0].set_ylabel("normalized d_beh per token")
-    axes[0].set_title("(D) Hop-resolved attribution: chain vs shortcut")
-    axes[0].legend(fontsize=7)
+        ax.errorbar(range(k + 1), np.nanmean(arr, 0),
+                    yerr=np.nanstd(arr, 0) / np.sqrt(len(arr)),
+                    marker="o", label=f"$k={k}$ ($n={len(arr)}$)")
 
+   # --- MODIFIED: Increased fontsize to 18 for Figure 1(b) ---
+    ax.set_xlabel("Hop (0 = root fact, $k$ = answer edge)", fontsize=18)
+    ax.set_ylabel(r"Normalized $d_{\mathrm{behavior}}$ per token", fontsize=18)
+    # ----------------------------------------------------------
+
+    # Increase legend font size from 10
+    ax.legend(fontsize=14, loc="lower right") 
+    fig.tight_layout(pad=0.5)
+    fig.savefig(os.path.join(args.out_dir, "D_hop_profile.png"), dpi=200, bbox_inches='tight')
+
+    # (D2) (layer, step) heatmap of gold-mass fraction
+    fig, ax = plt.subplots(figsize=(5.5, 4))
     layers = sorted({l for (l, s) in prec_by_ls})
     steps = sorted({s for (l, s) in prec_by_ls})
     H = np.full((len(layers), len(steps)), np.nan)
     for (l, s), v in prec_by_ls.items():
         H[layers.index(l), steps.index(s)] = np.mean(v)
-    im = axes[1].imshow(H, aspect="auto", origin="lower", cmap="viridis")
-    axes[1].set_xticks(range(len(steps)), steps)
-    axes[1].set_yticks(range(len(layers)), layers)
-    axes[1].set_xlabel("denoising step t")
-    axes[1].set_ylabel("layer")
-    axes[1].set_title("gold-mass fraction by (layer, step)")
-    fig.colorbar(im, ax=axes[1])
-    fig.tight_layout()
-    fig.savefig(os.path.join(args.out_dir, "D_hops_and_localization.png"), dpi=200)
+    im = ax.imshow(H, aspect="auto", origin="lower", cmap="viridis")
+    ax.set_xticks(range(len(steps)), steps)
+    ax.set_yticks(range(len(layers)), layers)
 
-    # (E) precision-by-group violin
-    if len(prec_s) and len(prec_f):
-        fig, ax = plt.subplots(figsize=(5, 4))
-        ax.violinplot([prec_s, prec_f], showmeans=True)
-        ax.axhline(0, color="k", ls="--", lw=0.8)
-        ax.set_xticks([1, 2], ["success", "fail"])
-        ax.set_ylabel("gold-path precision  -  chance")
-        ax.set_title(f"(E) Attribution location predicts correctness\n"
-                     f"AUC={auc_e:.3f}")
-        fig.tight_layout()
-        fig.savefig(os.path.join(args.out_dir,
-                                 "E_precision_predicts_correctness.png"), dpi=200)
+    # --- MODIFIED: Increased fontsize to 18 for Figure 1(c) ---
+    ax.set_xlabel("Denoising step $t$", fontsize=18)
+    ax.set_ylabel("Layer", fontsize=18)
+    # ----------------------------------------------------------
+
+    fig.colorbar(im, ax=ax)
+    fig.tight_layout(pad=0.5)
+    fig.savefig(os.path.join(args.out_dir, "D_localization_heatmap.png"), dpi=200, bbox_inches='tight')
 
     print(f"[ANALYZE] plots + report -> {args.out_dir}")
 
