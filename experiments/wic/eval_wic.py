@@ -20,6 +20,7 @@ from models.model_manager import ModelManager
 from experiments.theorems.verify_completeness import (
     set_seed, build_prompt_inputs,
 )
+from experiments.wic.wic import append_sep_token
 
 
 def wic_prompt(sentence1, sentence2, word):
@@ -94,6 +95,9 @@ def main():
     for r in rows:
         prompt = wic_prompt(r["sentence1"], r["sentence2"], r["word"])
         input_ids, attention_mask, L = build_prompt_inputs(tokenizer, "", prompt, device)
+        input_ids, attention_mask, L = append_sep_token(
+            tokenizer, input_ids, attention_mask, L
+        )
 
         x0 = backend.generate_trajectory(
             input_ids, attention_mask=attention_mask,

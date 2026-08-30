@@ -102,15 +102,37 @@ class ModelManager:
         cfg._attn_implementation = "eager"
         model = GPT2LMHeadModel(cfg)
 
-        # Load the wrapper state dict.
-        st = glob.glob(os.path.join(self.model_path, "*.safetensors"))
-        bn = glob.glob(os.path.join(self.model_path, "*.bin"))
-        if st:
-            raw = load_file(st[0])
-        elif bn:
-            raw = torch.load(bn[0], map_location="cpu")
+        # Load the wrapper state dict. Prefer the canonical HF filename
+        # (pytorch_model.bin / model.safetensors) over a bare glob: a
+        # Trainer-saved checkpoint dir also contains training_args.bin,
+        # optimizer.pt, scheduler.pt, rng_state.pth, etc., and glob order is
+        # not guaranteed to put the actual weights file first.
+        NON_WEIGHT_BIN_NAMES = {
+            "training_args.bin", "optimizer.pt", "scheduler.pt",
+            "rng_state.pth", "trainer_state.json",
+        }
+        st_path = os.path.join(self.model_path, "model.safetensors")
+        bn_path = os.path.join(self.model_path, "pytorch_model.bin")
+        if os.path.isfile(st_path):
+            raw = load_file(st_path)
+        elif os.path.isfile(bn_path):
+            raw = torch.load(bn_path, map_location="cpu")
         else:
-            raise FileNotFoundError(f"No .safetensors/.bin in {self.model_path}")
+            st = glob.glob(os.path.join(self.model_path, "*.safetensors"))
+            bn = [f for f in glob.glob(os.path.join(self.model_path, "*.bin"))
+                  if os.path.basename(f) not in NON_WEIGHT_BIN_NAMES]
+            if st:
+                raw = load_file(st[0])
+            elif bn:
+                raw = torch.load(bn[0], map_location="cpu")
+            else:
+                raise FileNotFoundError(f"No .safetensors/.bin in {self.model_path}")
+        if not isinstance(raw, dict):
+            raise TypeError(
+                f"Loaded weights file did not unpickle to a state dict "
+                f"(got {type(raw).__name__}); the checkpoint dir may contain "
+                f"a non-weight .bin file that got picked up instead."
+            )
 
         # Vocab fix: DiffuGPT resized embeddings to add a mask token (HKUNLP:
         # resize_token_embeddings(len(tokenizer), pad_to_multiple_of=2)), but the

@@ -56,6 +56,35 @@ def wic_prompt(sentence1: str, sentence2: str, word: str) -> str:
     )
 
 
+def resolve_sep_token_id(tokenizer):
+    """Token id for the '======' separator DiffuGPT-M ddm-sft training used
+    between question and answer (see diffugpt/scripts/wic_to_diffusft.py /
+    eval_wic.py: sep_token_id 50155). The checkpoint here is loaded as a plain
+    GPT2TokenizerFast (models/model_manager.py), so fall back to encoding the
+    literal string if tokenizer.sep_token_id isn't set."""
+    sep_id = getattr(tokenizer, "sep_token_id", None)
+    if sep_id is not None:
+        return sep_id
+    ids = tokenizer("======", add_special_tokens=False)["input_ids"]
+    if len(ids) != 1:
+        raise ValueError(f"'======' did not resolve to a single token id: {ids}")
+    return ids[0]
+
+
+def append_sep_token(tokenizer, input_ids, attention_mask, L):
+    """Append the training-format '======' separator after the prompt.
+    DiffuGPT-M WiC training data is '<bos> question ====== ### <Yes/No>. <eos>';
+    every generation must reproduce it or the model is off-distribution."""
+    sep_id = resolve_sep_token_id(tokenizer)
+    sep = torch.tensor([[sep_id]], dtype=input_ids.dtype, device=input_ids.device)
+    input_ids = torch.cat([input_ids, sep], dim=1)
+    if attention_mask is not None:
+        ones = torch.ones((attention_mask.shape[0], 1),
+                           dtype=attention_mask.dtype, device=attention_mask.device)
+        attention_mask = torch.cat([attention_mask, ones], dim=1)
+    return input_ids, attention_mask, L + 1
+
+
 def read_pred(text):
     """First Yes/No in generated text -> 1/0/None."""
     t = text.strip().lower()
@@ -175,6 +204,9 @@ def main():
         prompt = wic_prompt(r["sentence1"], r["sentence2"], r["word"])
         input_ids, attention_mask, L = build_prompt_inputs(
             tokenizer, args.system, prompt, device
+        )
+        input_ids, attention_mask, L = append_sep_token(
+            tokenizer, input_ids, attention_mask, L
         )
 
         # one denoising trajectory; record x at every step, and the committed x0

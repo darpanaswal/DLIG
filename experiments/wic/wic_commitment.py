@@ -44,7 +44,7 @@ from models.backends import build_backend
 from utils.config import OUTPUT_DIR
 from models.model_manager import ModelManager
 from experiments.theorems.verify_completeness import set_seed, build_prompt_inputs
-from experiments.wic.wic import wic_prompt, read_pred, load_wic
+from experiments.wic.wic import wic_prompt, read_pred, load_wic, append_sep_token
 
 
 def resolve_yes_no_ids(tokenizer):
@@ -128,6 +128,9 @@ def main():
         prompt = wic_prompt(r["sentence1"], r["sentence2"], r["word"])
         input_ids, attention_mask, L = build_prompt_inputs(
             tokenizer, args.system, prompt, device
+        )
+        input_ids, attention_mask, L = append_sep_token(
+            tokenizer, input_ids, attention_mask, L
         )
 
         # capture logits at every denoising step

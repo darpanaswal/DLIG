@@ -49,6 +49,35 @@ from experiments.theorems.verify_completeness import (
 from experiments.contrastive.contrastive_attribution import clean_token, input_token_indices
 
 
+def resolve_sep_token_id(tokenizer):
+    """Token id for the '======' separator DiffuGPT-M ddm-sft training used
+    between question and CoT/answer (see diffugpt/scripts/prosqa_to_diffusft.py /
+    eval_prosqa.py: sep_token_id 50155). The checkpoint here is loaded as a plain
+    GPT2TokenizerFast (models/model_manager.py), so fall back to encoding the
+    literal string if tokenizer.sep_token_id isn't set."""
+    sep_id = getattr(tokenizer, "sep_token_id", None)
+    if sep_id is not None:
+        return sep_id
+    ids = tokenizer("======", add_special_tokens=False)["input_ids"]
+    if len(ids) != 1:
+        raise ValueError(f"'======' did not resolve to a single token id: {ids}")
+    return ids[0]
+
+
+def append_sep_token(tokenizer, input_ids, attention_mask, L):
+    """Append the training-format '======' separator after the prompt.
+    DiffuGPT-M ProsQA training data is '<bos> question ====== <CoT> ### <answer>
+    <eos>'; every generation must reproduce it or the model is off-distribution."""
+    sep_id = resolve_sep_token_id(tokenizer)
+    sep = torch.tensor([[sep_id]], dtype=input_ids.dtype, device=input_ids.device)
+    input_ids = torch.cat([input_ids, sep], dim=1)
+    if attention_mask is not None:
+        ones = torch.ones((attention_mask.shape[0], 1),
+                           dtype=attention_mask.dtype, device=attention_mask.device)
+        attention_mask = torch.cat([attention_mask, ones], dim=1)
+    return input_ids, attention_mask, L + 1
+
+
 def wrong_target(gold: str, gold_option: str, wrong_option: str) -> str:
     """
     y- = gold sentence with the final concept swapped. Replacing only the LAST
@@ -217,6 +246,13 @@ def main():
             print(f"[WARN idx={ex['idx']}] span/token misalign "
                   f"({len(span_ids)} vs {len(keep_idx)}); trimming.")
             span_ids = (span_ids + [-1] * len(keep_idx))[: len(keep_idx)]
+
+        # append the training-format separator AFTER computing keep_idx/span_ids
+        # (which index into the prompt-only encoding); everything downstream
+        # (generation, masking, DLIG scoring) uses the updated L.
+        input_ids, attention_mask, L = append_sep_token(
+            tokenizer, input_ids, attention_mask, L
+        )
 
         # one trajectory per example
         rec = TrajRecorder()
