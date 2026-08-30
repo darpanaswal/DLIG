@@ -18,19 +18,24 @@ diffugpt/scripts/eval_task.py on the same checkpoint with matched
 hyperparameters is a clean A/B test of the two generation stacks. If the two
 disagree, that's a real bug in one of them, not a hyperparameter mismatch.
 
-SEPARATOR TOKEN (WiC / ProsQA only)
-------------------------------------
-Both WiC and ProsQA ddm-sft training data are formatted as
-    <bos> question ====== <CoT/answer> <eos>
-(see diffugpt/scripts/{wic,prosqa}_to_diffusft.py). The shared, family-agnostic
+SEPARATOR TOKEN (WiC only)
+---------------------------
+WiC ddm-sft training data is formatted as
+    <bos> question ====== <answer> <eos>
+(see diffugpt/scripts/wic_to_diffusft.py). The shared, family-agnostic
 build_prompt_inputs() in experiments/theorems/verify_completeness.py does NOT
 know about this task-specific separator (it is also used by Dream and other
-non-WiC/ProsQA experiments), so this script appends it itself -- mirroring the
-fix already applied in experiments/wic/{wic,wic_commitment,eval_wic}.py and
-experiments/prosqa/prosqa_contrastive_dlig.py. Omitting it runs the model
-off-distribution (per diffugpt/scripts/eval_prosqa.py's own comment, this is
-"what tanked accuracy to ~4%"). infill runs on the BASE checkpoint (no SFT,
-no separator -- see the infill section below).
+non-WiC experiments), so this script appends it itself for WiC -- mirroring
+the fix applied in experiments/wic/{wic,wic_commitment,eval_wic}.py. Omitting
+it runs the model off-distribution (per diffugpt/scripts/eval_wic.py's own
+comment, this tanks accuracy).
+
+ProsQA deliberately does NOT append the separator here (task["append_sep"] is
+a no-op, _no_sep) -- experiments/prosqa/prosqa_contrastive_dlig.py's own
+separator-appending code was reverted back to its original no-delimiter
+behavior, and this script mirrors that so the two stay consistent. infill
+runs on the BASE checkpoint (no SFT, no separator either -- see the infill
+section below).
 
 infill: reuses experiments/infill/attribution_infill.py's
 infill_generate_trajectory and its oracle-span-length construction (gold
@@ -68,10 +73,16 @@ from models.backends import build_backend
 from models.model_manager import ModelManager
 from experiments.theorems.verify_completeness import build_prompt_inputs, set_seed
 from experiments.wic.wic import wic_prompt, load_wic, append_sep_token as wic_append_sep_token
-from experiments.prosqa.prosqa_contrastive_dlig import (
-    append_sep_token as prosqa_append_sep_token,
-)
 from experiments.infill.attribution_infill import infill_generate_trajectory, load_stories
+from experiments.prosqa.bucket_prosqa import label_row as prosqa_label_row
+
+
+def _no_sep(tokenizer, input_ids, attention_mask, L):
+    """ProsQA deliberately does NOT append the '======' separator, matching
+    experiments/prosqa/prosqa_contrastive_dlig.py's reverted (no-delimiter)
+    generation -- kept consistent so this eval script always mirrors whatever
+    that attribution script actually does."""
+    return input_ids, attention_mask, L
 
 
 # --------------------------------------------------------------------------- #
@@ -183,7 +194,7 @@ TASKS = {
         default_max_new_tokens=64,
         loader=load_prosqa,
         prompt_fn=lambda ex: ex["question"].strip(),
-        append_sep=prosqa_append_sep_token,
+        append_sep=_no_sep,
     ),
     "infill": dict(
         default_data="data/rocstories_test.jsonl",
@@ -251,7 +262,7 @@ def run_infill(backend, tokenizer, device, stories, gen_steps, out_file):
             with torch.no_grad():
                 final_x0 = infill_generate_trajectory(
                     backend, x_t, (gap_start, gap_end),
-                    steps=gen_steps, record_hook=lambda *a, **k: None,
+                    steps=gen_steps, record_hook=None,
                 )
             span_ids = final_x0[0, gap_start:gap_end].cpu().tolist()
             pred = tokenizer.decode(span_ids, skip_special_tokens=True).strip()
@@ -306,6 +317,8 @@ def main():
 
     n = n_correct = n_exact = n_concept = n_unreadable = 0
     per_class = {0: [0, 0], 1: [0, 0]}
+    bucket_counts = {"correct": 0, "concept_only": 0, "wrong_valid": 0,
+                      "concept_invalid": 0, "subj_wrong": 0}
     pbar = tqdm(rows, desc=f"[DLIG] {args.task}", unit="ex")
     with open(out_file, "w") as fout:
         for row in pbar:
@@ -320,7 +333,7 @@ def main():
             x0 = backend.generate_trajectory(
                 input_ids, attention_mask=attention_mask,
                 max_new_tokens=max_new_tokens, steps=args.gen_steps,
-                record_hook=lambda *a, **k: None,
+                record_hook=None,
             )
             gen_ids = x0[0][L:].tolist()
             eos_id = tokenizer.eos_token_id
@@ -351,8 +364,15 @@ def main():
                 n_concept += int(concept)
                 rec = {"question": prompt, "gold": gold, "gen": gen_text,
                        "pred_answer": pred, "exact": exact, "concept_match": concept}
+                # bucket_prosqa.py's success metric: exact/concept_match gated
+                # by whether the model even answered about the right entity
+                # (raw concept_match alone can match on a WRONG subject).
+                bucket = prosqa_label_row(rec, n)["bucket"]
+                bucket_counts[bucket] += 1
+                rec["bucket"] = bucket
+                success = bucket_counts["correct"] + bucket_counts["concept_only"]
                 pbar.set_postfix(exact=f"{100*n_exact/n:.1f}%",
-                                 concept=f"{100*n_concept/n:.1f}%")
+                                 success=f"{100*success/n:.1f}%")
 
             fout.write(json.dumps(rec) + "\n")
 
@@ -365,8 +385,19 @@ def main():
         print(f"  same-sense (1)  : {100*a1:.2f}%   ({per_class[1][0]}/{per_class[1][1]})")
         print(f"  diff-sense (0)  : {100*a0:.2f}%   ({per_class[0][0]}/{per_class[0][1]})")
     else:
-        print(f"  answer_exact    : {100*n_exact/n:.2f}%")
-        print(f"  target_concept  : {100*n_concept/n:.2f}%   (chance ~50%)")
+        success = bucket_counts["correct"] + bucket_counts["concept_only"]
+        fail = bucket_counts["wrong_valid"]
+        off = bucket_counts["subj_wrong"] + bucket_counts["concept_invalid"]
+        print(f"  answer_exact     : {100*n_exact/n:.2f}%   (unguarded string match, "
+              f"kept for reference)")
+        print(f"  raw concept_match: {100*n_concept/n:.2f}%   (unguarded -- can match "
+              f"on the WRONG subject; not the metric to report)")
+        for b, c in bucket_counts.items():
+            print(f"  bucket {b:16}: {c:4}  ({100*c/n:5.1f}%)")
+        print(f"  SUCCESS (correct + concept_only, subject-gated): "
+              f"{100*success/n:.2f}%   ({success}/{n})  <-- the metric to report")
+        print(f"  fail   (wrong_valid)                          : {100*fail/n:.2f}%   ({fail}/{n})")
+        print(f"  off-manifold (subj_wrong + concept_invalid)   : {100*off/n:.2f}%   ({off}/{n})")
     print(f"  preds -> {out_file}")
 
 

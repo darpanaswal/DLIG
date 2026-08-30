@@ -89,11 +89,17 @@ def rouge1_f1(pred_ids, gold_ids):
 #  Records xt at each step via record_hook(step, xt, logits), exactly like
 #  TrajRecorder, so target_steps line up with generation step counts.
 # --------------------------------------------------------------------------- #
-def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook):
+def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook=None):
     """
     x_full:   [1, L_total] = [left | span | right], span already MASK-filled.
     span_slice: (gap_start, gap_end) maskable middle region.
     steps:    number of diffusion steps T.
+    record_hook: called each step with (step, xt_cpu, logits) for callers that
+        need the trajectory (e.g. this file's own DLIG attribution loop below).
+        Pass None (or omit) to skip the per-step .detach().to("cpu").clone()
+        entirely -- a real cost (CUDA sync + host transfer) that a bare
+        generate-and-score caller (scripts/eval_task.py) doesn't need, since it
+        only wants the final x0.
     Returns final x0.
     """
     device = next(backend.lm_head.parameters()).device
@@ -124,7 +130,8 @@ def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook):
 
     # step index 0 (t = T): span fully masked
     logits, x0 = _predict(xt)
-    record_hook(0, xt.detach().to("cpu").clone(), logits)
+    if record_hook is not None:
+        record_hook(0, xt.detach().to("cpu").clone(), logits)
 
     # steps t = T-1 .. 1: progressively reveal span tokens
     rec_idx = 1
@@ -135,7 +142,8 @@ def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook):
         xt = xt.masked_scatter(reveal, x0[reveal])
         cur_maskable = cur_maskable.masked_fill(reveal, False)
         logits, x0 = _predict(xt)
-        record_hook(rec_idx, xt.detach().to("cpu").clone(), logits)
+        if record_hook is not None:
+            record_hook(rec_idx, xt.detach().to("cpu").clone(), logits)
         rec_idx += 1
 
     return x0

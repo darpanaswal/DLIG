@@ -247,12 +247,10 @@ def main():
                   f"({len(span_ids)} vs {len(keep_idx)}); trimming.")
             span_ids = (span_ids + [-1] * len(keep_idx))[: len(keep_idx)]
 
-        # append the training-format separator AFTER computing keep_idx/span_ids
-        # (which index into the prompt-only encoding); everything downstream
-        # (generation, masking, DLIG scoring) uses the updated L.
-        input_ids, attention_mask, L = append_sep_token(
-            tokenizer, input_ids, attention_mask, L
-        )
+        # NOTE: deliberately NOT appending the '======' separator here (see
+        # append_sep_token above) -- reverted to the prior no-separator
+        # behavior per explicit instruction, pending a decision on whether
+        # ProsQA's DLIG-side attribution generation should use it.
 
         # one trajectory per example
         rec = TrajRecorder()

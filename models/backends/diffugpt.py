@@ -181,7 +181,7 @@ class DiffuGPTBackend(ModelBackend):
         attention_mask: Optional[torch.Tensor],
         max_new_tokens: int,
         steps: int,
-        record_hook: Callable,
+        record_hook: Optional[Callable] = None,
     ) -> torch.Tensor:
         """
         Random-reveal masked-diffusion sampling, ported from HKUNLP/DiffuLLaMA
@@ -192,7 +192,14 @@ class DiffuGPTBackend(ModelBackend):
             a src_mask. This matches how the rest of the pipeline lays out x_t
             (prompt at [:, :L]).
           - We call record_hook(step, x_t, logits) each step so the caller stores
-            the trajectory (TrajRecorder), keying steps 0..steps-1.
+            the trajectory (TrajRecorder), keying steps 0..steps-1. Pass
+            record_hook=None (or omit it) to skip this entirely: the
+            .detach().to("cpu").clone() below is a real per-step cost (a CUDA
+            sync + host transfer) that every downstream DLIG attribution
+            experiment needs (it stores the trajectory for later scoring), but
+            a bare accuracy eval that only wants the final x0 should not pay
+            it -- this is what made scripts/eval_task.py much slower than the
+            official generate_samples, which never leaves the GPU mid-loop.
 
         Algorithm (unchanged):
           p_to_x0 = 1/(t+1) tokens revealed per step; top-p filtered categorical
@@ -240,7 +247,8 @@ class DiffuGPTBackend(ModelBackend):
 
         # --- step index 0 (t = T) ---
         logits, x0 = _predict(xt)
-        record_hook(0, xt.detach().to("cpu").clone(), logits)
+        if record_hook is not None:
+            record_hook(0, xt.detach().to("cpu").clone(), logits)
 
         # --- steps t = T-1 .. 1 ---
         # The HKUNLP loop runs diffusion_steps-1 reveal iterations. We index the
@@ -254,7 +262,8 @@ class DiffuGPTBackend(ModelBackend):
             maskable_mask = maskable_mask.masked_fill(masked_to_x0, False)
 
             logits, x0 = _predict(xt)
-            record_hook(rec_idx, xt.detach().to("cpu").clone(), logits)
+            if record_hook is not None:
+                record_hook(rec_idx, xt.detach().to("cpu").clone(), logits)
             rec_idx += 1
 
         return x0

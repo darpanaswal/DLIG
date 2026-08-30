@@ -102,7 +102,7 @@ def main():
         x0 = backend.generate_trajectory(
             input_ids, attention_mask=attention_mask,
             max_new_tokens=args.max_new_tokens, steps=args.gen_steps,
-            record_hook=lambda *a, **k: None,   # required positional; we don't need the trajectory
+            record_hook=None,   # skip the per-step CPU trajectory copy; we only need the final x0
         )
         gen_text = tokenizer.decode(x0[0][L:].tolist(), skip_special_tokens=True).strip()
         pred = read_answer(gen_text)
