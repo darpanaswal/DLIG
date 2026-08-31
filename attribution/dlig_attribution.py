@@ -373,12 +373,12 @@ class DLIGAttribution:
                 outputs = self._model_forward_no_mask(input_ids=x_rep)
                 target_score = self._compute_target_score(outputs, x_rep, original_length)
 
+            # Near-zero gradients at an early/uncommitted step are an expected,
+            # already-documented phenomenon (self-generated target not yet
+            # committed) -- not printed as a per-step warning; see e.g.
+            # attribution_infill.py's/wic.py's n_scoreable/n_committed guards,
+            # which skip these steps entirely before reaching this point.
             grads_flat = torch.autograd.grad(target_score, interpolated_flat, retain_graph=False)[0]
-            if chunk_idx == 1 and grads_flat.abs().max() < 1e-10:
-                print(
-                    f"⚠️  WARNING: Near-zero gradients at step {step}, first chunk. "
-                    f"Max grad magnitude: {grads_flat.abs().max().item():.2e}"
-                )
             grads = grads_flat.reshape(c, B, S, H)
             grad_sum += grads.detach().sum(dim=0)
 
@@ -470,12 +470,12 @@ class DLIGAttribution:
             x_rep = x_t_local.repeat(c, 1)
             target_score = self._compute_target_score(outputs, x_rep, original_length)
 
+            # Near-zero gradients at an early/uncommitted step are an expected,
+            # already-documented phenomenon (self-generated target not yet
+            # committed) -- not printed as a per-step warning; see e.g.
+            # attribution_infill.py's/wic.py's n_scoreable/n_committed guards,
+            # which skip these steps entirely before reaching this point.
             grads_flat = torch.autograd.grad(target_score, interpolated_flat, retain_graph=False)[0]
-            if chunk_idx == 1 and grads_flat.abs().max() < 1e-10:
-                print(
-                    f"⚠️  WARNING: Near-zero gradients at step {step}, first chunk. "
-                    f"Max grad magnitude: {grads_flat.abs().max().item():.2e}"
-                )
             grads = grads_flat.reshape(c, B, S, H)
             grad_sum += grads.detach().sum(dim=0)
 
@@ -626,8 +626,6 @@ class DLIGAttribution:
     def set_target_output(self, target_text):
         target_ids = self.tokenizer.encode(target_text, return_tensors="pt")
         self.target_output_ids = target_ids.to(next(self.model.parameters()).device)
-        print(f"[DEBUG] Target output set: {target_text}")
-        print(f"[DEBUG] Target IDs shape: {self.target_output_ids.shape}")
 
     def generation_logits_hook_func(self, step, x, logits):
         if step is not None and self.original_input_length is not None:
