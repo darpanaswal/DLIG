@@ -1,0 +1,47 @@
+ProsQA contrastive DLIG analysis  (n=355)
+============================================================
+
+(A) Path precision (success group, pooled layers/steps)
+    mean prec-chance gap : +0.1496  (n=286; Wilcoxon p=0.00e+00)
+    random-edge null gap : mean -0.0202, 95th pct +0.0753
+
+(B) Failure faithfulness (fail group, behavior-aligned d)
+    per-token mass  chain\gold: +2.8861   gold\chain: +4.3427  (n=42)
+    paired Wilcoxon (chain\gold - gold\chain): mean -1.4567  p=5.20e-01
+    [unpaired ref] P(chain > gold) AUC=0.490  p=8.79e-01
+    all-fails CHAIN vs FACT\CHAIN (n=66): mean +4.7721  Wilcoxon p=3.47e-06
+    success mirror GOLD vs FACT\GOLD (n=286): mean +3.4970  Wilcoxon p=0.00e+00
+    success control (chain-gold gap): +0.3752
+
+(C) Context-reliance predicts correctness
+    per-token |d| mass  success: 3.5502   fail: 4.1336
+    AUC(success vs fail) = 0.440  p=1.24e-01
+    confound check  Spearman(mass, k_gold)=+0.055   Spearman(mass, n_edges)=-0.330
+    k-matched AUC (mass -> correctness within k):
+      k=2: AUC=0.365  p=2.84e-02  (n=120+27)
+      k=3: AUC=0.472  p=6.18e-01  (n=116+33)
+      k=4: AUC=0.511  p=9.21e-01  (n=45+8)
+      weighted avg AUC = 0.433
+    logistic  correctness ~ mass + k_gold + n_edges (standardized):
+      beta[mass] = -0.203  Wald p=1.25e-01
+      beta[k_gold] = +0.033  Wald p=8.07e-01
+      beta[n_edges] = +0.044  Wald p=7.58e-01
+    per-step AUC (per-example, layer-averaged):
+      t= 1: AUC=0.435  p=9.31e-02
+      t= 7: AUC=0.424  p=4.90e-02
+      t=13: AUC=0.430  p=7.11e-02
+      t=19: AUC=0.445  p=1.58e-01
+      t=25: AUC=0.439  p=1.17e-01
+      t=31: AUC=0.437  p=1.02e-01
+      t=37: AUC=0.432  p=8.08e-02
+      t=43: AUC=0.416  p=2.96e-02
+      t=49: AUC=0.421  p=4.04e-02
+      t=54: AUC=0.419  p=3.77e-02
+      t=60: AUC=0.419  p=3.68e-02
+
+(E) Attribution LOCATION predicts correctness
+    precision gap  success: +0.1496   fail: +0.1384
+    AUC(success vs fail) = 0.524  p=5.34e-01
+    logistic  correctness ~ precision + mass (standardized):
+      beta[precision] = +0.064  Wald p=6.35e-01
+      beta[mass] = -0.213  Wald p=8.93e-02

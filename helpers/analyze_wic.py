@@ -59,6 +59,11 @@ Usage — main-text figures:
       --commit outputs/wic/wic_commitment.jsonl \\
       --commit_plot_out outputs/wic/figs/commit_trajectory.png
 
+Usage — list panel candidates (hand-pick a vivid, concrete pivot word before
+choosing --panel_idx; re-run after regenerating --dlig, since which idx
+values are "correct" shifts between generation runs):
+  python -m helpers.analyze_wic --list_candidates --dlig outputs/wic/wic_dlig.jsonl
+
 Usage — panel mode (pick 2-3 examples, timestep-averaged panels over layers):
   python -m helpers.analyze_wic --panel --dlig outputs/wic/wic_dlig.jsonl \\
       --panel_idx 208 --panel_out_file outputs/wic/figs/correct_no_wall.png
@@ -446,6 +451,27 @@ def plot_commit_trajectory(rows, out_file):
 
 # ============================================================ panel mode (per-example attribution bars)
 
+def list_panel_candidates(rows, n=40):
+    """Print candidate examples for --panel_idx, grouped by (correct,
+    pred==label) -- i.e. the model's correct No (overrode its Yes-bias) and
+    correct Yes populations. Prefer vivid, concrete pivot words (bank, bass,
+    light, spring, wall, throw, channel, ...) over abstract ones (have, make)
+    when hand-picking a qualitative example -- concrete senses make the
+    attribution bars easier for a reader to sanity-check against the actual
+    sentence. NOTE: which specific idx values are 'correct' shifts between
+    generation runs (different gen_steps/target_steps/checkpoint change which
+    examples the model gets right) -- re-run this after regenerating --dlig
+    rather than reusing indices from an older run."""
+    def show(tag, pred, label):
+        xs = [r for r in rows if r["correct"] and r["label"] == label and r["pred"] == pred]
+        print(f"\n=== {tag} ({len(xs)}) ===")
+        for r in xs[:n]:
+            print(f'{r["idx"]:4d}  {r["word"]:<16} -> {r["gen_text"][:25]!r}')
+    print("Pick vivid pivot words (bank, bass, light, spring...) over abstract ones (have, make).")
+    show("correct_No (overrode Yes-bias)", 0, 0)
+    show("correct_Yes", 1, 1)
+
+
 def _pick_example(rows, idx, pick):
     if idx is not None:
         for r in rows:
@@ -534,7 +560,7 @@ def _bar_panel(ax, tokens, d, title, min_frac):
     ax.set_ylim(-1.15 * m, 1.15 * m)
 
 
-def plot_layer_panels(row, layers, out_file, per_step=False, min_frac=0.05):
+def plot_layer_panels(row, layers, out_file, per_step=False, min_frac=0.05, cols=None):
     import matplotlib; matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -545,7 +571,7 @@ def plot_layer_panels(row, layers, out_file, per_step=False, min_frac=0.05):
         dbl = _signed_d_by_layer(row)
         layers = [l for l in layers if l in dbl]
         n = len(layers)
-        cols = min(4, n)
+        cols = cols if cols is not None else min(4, n)
         rows_ = int(np.ceil(n / cols))
         fig, axes = plt.subplots(rows_, cols, figsize=(4.2 * cols, 2.8 * rows_),
                                  squeeze=False)
@@ -613,6 +639,15 @@ def main():
     # --- panel mode ---
     ap.add_argument("--panel", action="store_true",
                     help="run panel mode (per-example attribution bars) instead of the stats experiments")
+    ap.add_argument("--list_candidates", action="store_true",
+                    help="print candidate examples for --panel_idx, grouped by "
+                         "correct_No (overrode Yes-bias) / correct_Yes, from "
+                         "--dlig, and exit. Hand-pick a vivid, concrete pivot "
+                         "word from the printed list rather than an abstract "
+                         "one -- re-run this after regenerating --dlig, since "
+                         "which idx values are 'correct' shifts between runs.")
+    ap.add_argument("--list_n", type=int, default=40,
+                    help="--list_candidates: max examples printed per group.")
     ap.add_argument("--panel_out_file", default=None,
                     help="required with --panel: where to save the panel figure")
     ap.add_argument("--panel_idx", type=int, default=None,
@@ -621,13 +656,23 @@ def main():
                     choices=["correct_no", "correct_yes", "any_correct", "any"],
                     help="panel mode: auto-pick population when --panel_idx not given")
     ap.add_argument("--panel_layers", type=int, nargs="+",
-                    default=[0, 4, 8, 12, 16, 20, 22],
-                    help="panel mode: which layers to panel")
+                    default=[0, 2, 4, 8, 12, 16, 18, 20, 22],
+                    help="panel mode: which layers to panel. Default is "
+                         "Figure 1's exact 9-layer set (DLIG_NeurIPS.pdf).")
     ap.add_argument("--panel_per_step", action="store_true",
                     help="panel mode appendix: show per-step evolution instead of averaging")
-    ap.add_argument("--panel_min_frac", type=float, default=0.05,
-                    help="panel mode: drop tokens with |attr| below this fraction of the panel max")
+    ap.add_argument("--panel_min_frac", type=float, default=0.08,
+                    help="panel mode: drop tokens with |attr| below this fraction "
+                         "of the panel max (floor: keep >=3 largest regardless). "
+                         "0.08 matches Figure 1's stated rule exactly.")
+    ap.add_argument("--panel_cols", type=int, default=3,
+                    help="panel mode: subplot grid columns. 3 matches Figure 1's "
+                         "3x3 layout for the 9-layer default above.")
     args = ap.parse_args()
+
+    if args.list_candidates:
+        list_panel_candidates(load(args.dlig), n=args.list_n)
+        return
 
     if args.panel:
         if not args.panel_out_file:
@@ -635,7 +680,8 @@ def main():
         rows = load(args.dlig)
         row = _pick_example(rows, args.panel_idx, args.panel_pick)
         plot_layer_panels(row, args.panel_layers, args.panel_out_file,
-                          per_step=args.panel_per_step, min_frac=args.panel_min_frac)
+                          per_step=args.panel_per_step, min_frac=args.panel_min_frac,
+                          cols=args.panel_cols)
         return
 
     if args.empty_report:
