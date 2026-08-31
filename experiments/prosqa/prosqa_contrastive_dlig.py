@@ -146,8 +146,16 @@ def build_arg_parser():
     p.add_argument("--chunk", type=int, default=12)
     p.add_argument("--gen_steps", type=int, default=64)
     p.add_argument("--max_new_tokens", type=int, default=64)
-    p.add_argument("--target_steps", type=int, nargs="+", default=[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63],
-                   help="Denoising steps to attribute at, every 2nd step from 1 to gen_steps-1 -- same absolute cadence as the paper's T=12 setting ([1,3,5,7,9,11]), extended to T=64 (32 points). More points = more sequential attribution compute per example, NOT more peak memory (batch_size only affects the generation phase); override to match a different --gen_steps.")
+    p.add_argument("--target_steps", type=int, nargs="+", default=[1, 10, 19, 28, 36, 45, 54, 63],
+                   help="8 evenly-spread points across the T-step trajectory "
+                        "(linspace(1, T-1, 8), rounded). ProsQA scores TWO "
+                        "targets per step (y_plus/y_minus) on much longer "
+                        "sequences than WiC/infill, so its attribution phase "
+                        "is far more expensive per step -- kept coarser than "
+                        "WiC/infill's 32-point cadence (~1/4 the points, ~1/4 "
+                        "the attribution wall-clock, since cost scales "
+                        "linearly with step count) to stay tractable. Override "
+                        "to match a different --gen_steps or density.")
     p.add_argument("--layers", type=str, nargs="+",
                    default=[str(i) for i in range(0, 24, 2)])
     p.add_argument("--seed", type=int, default=42)
