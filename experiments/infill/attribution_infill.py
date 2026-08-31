@@ -219,6 +219,15 @@ def build_arg_parser():
 
     p.add_argument("--num_shards", type=int, default=1)
     p.add_argument("--shard_id", type=int, default=0)
+    p.add_argument("--batch_size", type=int, default=1,
+                   help="Stories generated together per call to "
+                        "infill_generate_trajectory (left|span|right|"
+                        "trailing_pad layout; verified via "
+                        "scripts/verify_batching.py --task infill -- requires "
+                        "TF32 disabled, see model_manager.py). DLIG "
+                        "attribution stays per-story; only generation is "
+                        "batched. diffugpt only (--family dream ignores this). "
+                        "1 = original unbatched behavior.")
 
     p.add_argument("--n_samples", type=int, default=1000,
                    help="paper uses first 1000 ROCStories cases.")
@@ -307,162 +316,171 @@ def main():
         print(f"[INFO] Resuming; {len(processed)} stories already done "
               f"(checked: {resume_files}).")
 
-    for sidx, sents in enumerate(tqdm(stories, desc=f"infill shard {args.shard_id}")):
-        story_id = f"{args.shard_id}:{sidx}"
-        if story_id in processed:
+    batch_size = args.batch_size if args.family == "diffugpt" else 1
+    todo = [(sidx, sents) for sidx, sents in enumerate(stories)
+            if f"{args.shard_id}:{sidx}" not in processed]
+    pbar = tqdm(total=len(todo), desc=f"infill shard {args.shard_id}")
+    pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
+
+    for chunk_start in range(0, len(todo), batch_size):
+        chunk = todo[chunk_start: chunk_start + batch_size]
+
+        # --- per-story encode (CPU-bound): tokenize + side-cap, same as the
+        # original unbatched code. ---
+        prepped = []
+        for sidx, sents in chunk:
+            s1, s2, s3, s4, s5 = sents
+            left_ids = tokenizer.encode(" ".join([s1, s2]), return_tensors="pt")
+            gold_ids = tokenizer.encode(" " + s3, return_tensors="pt")
+            right_ids = tokenizer.encode(" " + " ".join([s4, s5]), return_tensors="pt")
+            if left_ids.shape[1] > args.max_side_tokens:
+                left_ids = left_ids[:, -args.max_side_tokens:]
+            if right_ids.shape[1] > args.max_side_tokens:
+                right_ids = right_ids[:, :args.max_side_tokens]
+            span_len, n_left, n_right = gold_ids.shape[1], left_ids.shape[1], right_ids.shape[1]
+            if span_len < 1 or n_left < 1 or n_right < 1:
+                pbar.update(1)
+                continue
+            prepped.append(dict(sidx=sidx, s1=s1, s2=s2, s3=s3, s4=s4, s5=s5,
+                                left_ids=left_ids, gold_ids=gold_ids, right_ids=right_ids,
+                                n_left=n_left, n_right=n_right, span_len=span_len))
+        if not prepped:
             continue
 
-        s1, s2, s3, s4, s5 = sents
+        # --- left|span|right|trailing_pad batch (left-aligned; span position
+        # AND length vary per story, unlike wic/prosqa's shared prefix
+        # layout -- generalized key_padding_mask/position_ids in
+        # models/backends/diffugpt.py make this equivalent to generating each
+        # story alone, verified in scripts/verify_batching.py). ---
+        real_lens = [p["n_left"] + p["span_len"] + p["n_right"] for p in prepped]
+        Smax = max(real_lens)
+        B = len(prepped)
+        x = torch.full((B, Smax), pad_id, dtype=torch.long)
+        kpm = torch.zeros((B, Smax), dtype=torch.long)
+        maskable = torch.zeros((B, Smax), dtype=torch.bool)
+        for i, p in enumerate(prepped):
+            gap_start, gap_end = p["n_left"], p["n_left"] + p["span_len"]
+            real_len = real_lens[i]
+            x[i, :p["n_left"]] = p["left_ids"][0]
+            x[i, gap_start:gap_end] = mask_token_id
+            x[i, gap_end:real_len] = p["right_ids"][0]
+            kpm[i, :real_len] = 1
+            maskable[i, gap_start:gap_end] = True
+        x = x.to(device); kpm = kpm.to(device); maskable = maskable.to(device)
+        position_ids = (kpm.cumsum(dim=1) - 1).clamp(min=0)
 
-        # tokenize the three regions. Join with spaces; encode each region so we
-        # know exact token boundaries. (No BOS/EOS injection; DiffuGPT is GPT-2
-        # base, plain text.)
-        left_ids = tokenizer.encode(" ".join([s1, s2]), return_tensors="pt").to(device)
-        gold_ids = tokenizer.encode(" " + s3, return_tensors="pt").to(device)   # leading space: BPE-consistent
-        right_ids = tokenizer.encode(" " + " ".join([s4, s5]), return_tensors="pt").to(device)
-
-        # cap each side
-        if left_ids.shape[1] > args.max_side_tokens:
-            left_ids = left_ids[:, -args.max_side_tokens:]      # keep nearest-to-gap
-        if right_ids.shape[1] > args.max_side_tokens:
-            right_ids = right_ids[:, :args.max_side_tokens]      # keep nearest-to-gap
-
-        span_len = gold_ids.shape[1]
-        n_left = left_ids.shape[1]
-        n_right = right_ids.shape[1]
-        if span_len < 1 or n_left < 1 or n_right < 1:
-            continue
-
-        gap_start = n_left                      # first masked (target) position
-        gap_end = n_left + span_len             # one past last target position
-        L_total = n_left + span_len + n_right   # full sequence length
-
-        mask_block = torch.full((1, span_len), mask_token_id,
-                                dtype=left_ids.dtype, device=device)
-        x_t = torch.cat([left_ids, mask_block, right_ids], dim=1)  # [1, L_total]
-
-        # ----------------------------------------------------------------- #
-        # Target framing.
-        #   gold: fixed target = gold sentence 3 at the gap. The contrastive-
-        #         target path scores logits[:, L : L+score_len] against
-        #         target_output_ids with L == original_input_length = gap_start.
-        #   self: target_output_ids = None -> the self-generated path scores the
-        #         span tokens the model has committed at THIS step (masks
-        #         excluded). score_window restricts scoring to the gap so the
-        #         fixed right context is never scored.
-        # Attribution from _process_results is sliced to relevant_token_indices,
-        # which we set to the full context index set (both sides of the gap).
-        # ----------------------------------------------------------------- #
-        if args.target_mode == "gold":
-            dlig.target_output_ids = gold_ids.squeeze(0)        # [span_len]
-            dlig.score_window = None
-        else:  # "self"
-            dlig.target_output_ids = None
-            dlig.score_window = (gap_start, gap_end)
-        dlig.set_original_input_length(gap_start)
-
-        # context positions to attribute over = everything EXCEPT the gap:
-        ctx_indices = list(range(0, gap_start)) + list(range(gap_end, L_total))
-        dlig.relevant_token_indices = ctx_indices
-
-        # token strings + signed distance for each kept context position
-        all_tok_strs = [clean_token(t) for t in
-                        tokenizer.convert_ids_to_tokens(x_t[0])]
-        ctx_tok_strs, ctx_signed_dist = [], []
-        for i in ctx_indices:
-            ctx_tok_strs.append(all_tok_strs[i])
-            if i < gap_start:
-                ctx_signed_dist.append(i - gap_start)          # negative (left)
-            else:
-                ctx_signed_dist.append(i - (gap_end - 1))      # positive (right)
-
-        # ---- run the infill denoising trajectory (middle-masked span) ---- #
         from types import SimpleNamespace
-        rec = SimpleNamespace(x_by_step={})
+        batch_rec = SimpleNamespace(x_by_step={})
         def _rec_hook(step, xt_cpu, logits):
-            rec.x_by_step[int(step)] = xt_cpu
+            batch_rec.x_by_step[int(step)] = xt_cpu
+        # key_padding_mask/position_ids are DiffuGPT-only (DreamBackend.
+        # forward_logits doesn't accept them at all); only pass them for
+        # diffugpt, so --family dream (always batch_size=1 here) is
+        # unaffected even though kpm/position_ids were still computed above.
+        gen_kwargs = dict(key_padding_mask=kpm, position_ids=position_ids) \
+            if args.family == "diffugpt" else {}
         with torch.no_grad():
-            final_x0 = infill_generate_trajectory(
-                backend, x_t, (gap_start, gap_end),
-                steps=args.gen_steps, record_hook=_rec_hook)
+            final_x0_batch = infill_generate_trajectory(
+                backend, x, maskable, steps=args.gen_steps, record_hook=_rec_hook,
+                **gen_kwargs)
 
-        # quality: ROUGE-1 of the FINAL generated span vs gold
-        final_span = final_x0[0, gap_start:gap_end].cpu().tolist()
-        rouge1 = rouge1_f1(final_span, gold_ids.squeeze(0).cpu().tolist())
+        # --- per-story post-processing: identical to the unbatched path,
+        # just fed a slice of the batch (trailing padding stripped) instead
+        # of a freshly generated single-story tensor. ---
+        for i, p in enumerate(prepped):
+            story_id = f"{args.shard_id}:{p['sidx']}"
+            s3 = p["s3"]
+            gold_ids = p["gold_ids"].to(device)
+            n_left, n_right, span_len = p["n_left"], p["n_right"], p["span_len"]
+            gap_start, gap_end = n_left, n_left + span_len
+            L_total = real_lens[i]
 
-        story_result = {
-            "story_id": story_id,
-            "label": "rocstories_infill",
-            "target_mode": args.target_mode,
-            "n_left": n_left, "n_right": n_right, "span_len": span_len,
-            "gold_s3": s3,
-            "rouge1": rouge1,
-            "input_tokens": ctx_tok_strs,        # kept context tokens, in ctx_indices order
-            "signed_dist": ctx_signed_dist,      # signed distance per kept token (<0 left, >0 right)
-            "steps_data": [],
-        }
+            final_x0 = final_x0_batch[i: i + 1, :L_total]
+            x_t = x[i: i + 1, :L_total]
 
-        # ---- attribute at each requested denoising step ---- #
-        # gold: target stays FIXED to gold s3 across steps.
-        # self: F_t at each step scores the span tokens committed SO FAR (a
-        #       moving quantity); n_committed is logged per step so downstream
-        #       analysis can filter or weight early steps (n_committed=0 =>
-        #       F=0 => zero attribution, drop those cells).
-        for step in args.target_steps:
-            if step not in rec.x_by_step:
-                continue
-            x_step = rec.x_by_step[step].to(device)
-            n_committed = int((x_step[0, gap_start:gap_end] != mask_token_id).sum().item())
-
-            # Degenerate-step guard (self mode): if no committed span token is
-            # scoreable, F == 0 identically -> all gradients are exactly zero
-            # -> DLIG is a zero tensor. Skip the integration entirely and mark
-            # the step; downstream analysis drops these cells via n_scoreable.
-            # Under predicts_shifted the first span position (gap_start) has no
-            # in-slice logit and cannot be scored, so it is excluded from the
-            # scoreable count.
-            if args.target_mode == "self":
-                score_lo = gap_start + 1 if backend.predicts_shifted else gap_start
-                n_scoreable = int((x_step[0, score_lo:gap_end] != mask_token_id).sum().item())
+            if args.target_mode == "gold":
+                dlig.target_output_ids = gold_ids.squeeze(0)
+                dlig.score_window = None
             else:
-                n_scoreable = span_len          # gold target: always scoreable
-            if n_scoreable == 0:
-                story_result["steps_data"].append(
-                    {"step": step, "n_committed": n_committed,
-                     "n_scoreable": 0, "skipped": True, "layers": {}})
-                continue
+                dlig.target_output_ids = None
+                dlig.score_window = (gap_start, gap_end)
+            dlig.set_original_input_length(gap_start)
 
-            # baseline for THIS step: mask the full context, keep the span state
-            # (revealed-so-far tokens + remaining masks) identical.
-            baseline_step = x_step.clone()
-            for i in ctx_indices:
-                baseline_step[0, i] = mask_token_id
+            ctx_indices = list(range(0, gap_start)) + list(range(gap_end, L_total))
+            dlig.relevant_token_indices = ctx_indices
 
-            with torch.no_grad():
-                real_acts = mlhm.capture_activations(x_step, disable_kv_cache=True)
-                baseline_acts = mlhm.capture_activations(baseline_step, disable_kv_cache=True)
+            all_tok_strs = [clean_token(t) for t in
+                            tokenizer.convert_ids_to_tokens(x_t[0])]
+            ctx_tok_strs, ctx_signed_dist = [], []
+            for j in ctx_indices:
+                ctx_tok_strs.append(all_tok_strs[j])
+                if j < gap_start:
+                    ctx_signed_dist.append(j - gap_start)
+                else:
+                    ctx_signed_dist.append(j - (gap_end - 1))
 
-            step_data = {"step": step, "n_committed": n_committed,
-                         "n_scoreable": n_scoreable, "layers": {}}
-            for layer in valid_layers:
-                dlig.hook_manager = mlhm.get_layer_view(layer)
-                res = dlig.compute_dlig_at_timestep_with_activations(
-                    step=step, x_t=x_step,
-                    real_act=real_acts[layer], baseline_act=baseline_acts[layer],
-                    original_length=gap_start,
-                )
-                # full_dlig sliced to relevant_token_indices (= ctx_indices), [1, |ctx|, H]
-                pos_scores = res["full_dlig"][0].sum(dim=-1).float().cpu().numpy()
-                step_data["layers"][layer] = pos_scores.tolist()
+            final_span = final_x0[0, gap_start:gap_end].cpu().tolist()
+            rouge1 = rouge1_f1(final_span, gold_ids.squeeze(0).cpu().tolist())
 
-            story_result["steps_data"].append(step_data)
+            story_result = {
+                "story_id": story_id,
+                "label": "rocstories_infill",
+                "target_mode": args.target_mode,
+                "n_left": n_left, "n_right": n_right, "span_len": span_len,
+                "gold_s3": s3,
+                "rouge1": rouge1,
+                "input_tokens": ctx_tok_strs,
+                "signed_dist": ctx_signed_dist,
+                "steps_data": [],
+            }
 
-        with open(args.out_file, "a") as f:
-            f.write(json.dumps(story_result) + "\n")
+            for step in args.target_steps:
+                if step not in batch_rec.x_by_step:
+                    continue
+                x_step = batch_rec.x_by_step[step][i: i + 1, :L_total].to(device)
+                n_committed = int((x_step[0, gap_start:gap_end] != mask_token_id).sum().item())
+
+                if args.target_mode == "self":
+                    score_lo = gap_start + 1 if backend.predicts_shifted else gap_start
+                    n_scoreable = int((x_step[0, score_lo:gap_end] != mask_token_id).sum().item())
+                else:
+                    n_scoreable = span_len
+                if n_scoreable == 0:
+                    story_result["steps_data"].append(
+                        {"step": step, "n_committed": n_committed,
+                         "n_scoreable": 0, "skipped": True, "layers": {}})
+                    continue
+
+                baseline_step = x_step.clone()
+                for j in ctx_indices:
+                    baseline_step[0, j] = mask_token_id
+
+                with torch.no_grad():
+                    real_acts = mlhm.capture_activations(x_step, disable_kv_cache=True)
+                    baseline_acts = mlhm.capture_activations(baseline_step, disable_kv_cache=True)
+
+                step_data = {"step": step, "n_committed": n_committed,
+                             "n_scoreable": n_scoreable, "layers": {}}
+                for layer in valid_layers:
+                    dlig.hook_manager = mlhm.get_layer_view(layer)
+                    res = dlig.compute_dlig_at_timestep_with_activations(
+                        step=step, x_t=x_step,
+                        real_act=real_acts[layer], baseline_act=baseline_acts[layer],
+                        original_length=gap_start,
+                    )
+                    pos_scores = res["full_dlig"][0].sum(dim=-1).float().cpu().numpy()
+                    step_data["layers"][layer] = pos_scores.tolist()
+
+                story_result["steps_data"].append(step_data)
+
+            with open(args.out_file, "a") as f:
+                f.write(json.dumps(story_result) + "\n")
+            pbar.update(1)
 
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+    pbar.close()
 
 
 if __name__ == "__main__":
