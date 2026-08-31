@@ -7,14 +7,7 @@ dotenv_path = BASE_DIR / ".env"
 
 load_dotenv(dotenv_path=dotenv_path)
 
-openai_token = os.getenv("OPENAI_API_KEY")
 hf_token = os.getenv("HUGGINGFACE_API_KEY")
-wandb_token = os.getenv("WANDB_API_KEY")
-google_token = os.getenv("GOOGLE_API_KEY")
-mistral_token = os.getenv("MISTRAL_API_KEY")
-
-if not openai_token or not hf_token or not wandb_token:
-    raise ValueError("API keys are not set in environment variables")
 
 DREAM_PATH = BASE_DIR / "models/Dream"
 GPT_PATH = BASE_DIR / "models/Diffugpt"
