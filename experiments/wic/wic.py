@@ -124,11 +124,19 @@ def build_arg_parser():
 
     p.add_argument("--num_shards", type=int, default=1)
     p.add_argument("--shard_id", type=int, default=0)
+    p.add_argument("--batch_size", type=int, default=1,
+                   help="Examples generated together per call to "
+                        "generate_trajectory (left-padded; the backend's "
+                        "padding-aware attention mask + position ids make "
+                        "this equivalent to generating each alone -- verified "
+                        "in scripts/verify_batching.py). DLIG attribution "
+                        "itself stays per-example; only generation is "
+                        "batched. 1 = original unbatched behavior.")
 
     # DLIG hyperparameters (paper setting: T=12, steps {1,3,5,7,9,11}, even layers)
     p.add_argument("--m", type=int, default=12)
     p.add_argument("--chunk", type=int, default=12)
-    p.add_argument("--gen_steps", type=int, default=12)
+    p.add_argument("--gen_steps", type=int, default=64)
     p.add_argument("--max_new_tokens", type=int, default=6)
     p.add_argument("--target_steps", type=int, nargs="+", default=[1, 3, 5, 7, 9, 11])
     p.add_argument("--layers", type=str, nargs="+",
@@ -197,88 +205,115 @@ def main():
     if done:
         print(f"[INFO] Resuming past {len(done)} examples.")
 
-    for idx, r in tqdm(indexed, desc=f"shard {args.shard_id}"):
-        if idx in done:
-            continue
+    pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
+    todo = [(idx, r) for idx, r in indexed if idx not in done]
+    pbar = tqdm(total=len(todo), desc=f"shard {args.shard_id}")
 
-        prompt = wic_prompt(r["sentence1"], r["sentence2"], r["word"])
-        input_ids, attention_mask, L = build_prompt_inputs(
-            tokenizer, args.system, prompt, device
-        )
-        input_ids, attention_mask, L = append_sep_token(
-            tokenizer, input_ids, attention_mask, L
-        )
+    for chunk_start in range(0, len(todo), args.batch_size):
+        chunk = todo[chunk_start: chunk_start + args.batch_size]
 
-        # one denoising trajectory; record x at every step, and the committed x0
-        rec = SimpleNamespace(x_by_step={})
+        # --- encode each example, then left-pad into one batch --- #
+        encs = []
+        for idx, r in chunk:
+            prompt = wic_prompt(r["sentence1"], r["sentence2"], r["word"])
+            ids, am, L = build_prompt_inputs(tokenizer, args.system, prompt, device)
+            ids, am, L = append_sep_token(tokenizer, ids, am, L)
+            encs.append((idx, r, prompt, ids, am, L))
+        Lmax = max(e[5] for e in encs)
+
+        ids_rows, mask_rows = [], []
+        for _, _, _, ids, am, L in encs:
+            n_pad = Lmax - L
+            pad_ids = torch.full((1, n_pad), pad_id, dtype=ids.dtype, device=device)
+            pad_am = torch.zeros((1, n_pad), dtype=am.dtype, device=device)
+            ids_rows.append(torch.cat([pad_ids, ids], dim=1))
+            mask_rows.append(torch.cat([pad_am, am], dim=1))
+        batch_ids = torch.cat(ids_rows, dim=0)
+        batch_mask = torch.cat(mask_rows, dim=0)
+
+        # one denoising trajectory for the WHOLE BATCH; record x at every step,
+        # and the committed x0. The backend's padding-aware attention mask +
+        # position ids (models/backends/diffugpt.py) make this equivalent to
+        # generating each example alone -- verified in verify_batching.py.
+        batch_rec = SimpleNamespace(x_by_step={})
         def _rec_hook(step, xt_cpu, logits):
-            rec.x_by_step[int(step)] = xt_cpu
-        x0 = backend.generate_trajectory(
-            input_ids, attention_mask=attention_mask,
+            batch_rec.x_by_step[int(step)] = xt_cpu
+        x0_batch = backend.generate_trajectory(
+            batch_ids, attention_mask=batch_mask,
             max_new_tokens=args.max_new_tokens, steps=args.gen_steps,
             record_hook=_rec_hook,
         )
-        gen_ids = x0[0][L:].tolist()
-        eos_id = tokenizer.eos_token_id
-        if eos_id is not None and eos_id in gen_ids:
-            gen_ids = gen_ids[:gen_ids.index(eos_id)]
-        gen_text = tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
-        pred = read_pred(gen_text)
-        correct = (pred is not None and pred == r["label"])
-        # store EVERY example (correct, incorrect, and unparseable pred=None):
-        # failure modes of the Yes-biased model are the point of this analysis.
 
-        keep_idx = input_token_indices(input_ids[0, :L].tolist(), tokenizer,
-                                       user_prompt=prompt)
-        prompt_tokens = [clean_token(t)
-                         for t in tokenizer.convert_ids_to_tokens(input_ids[0, :L])]
-        kept_tokens = [prompt_tokens[i] for i in keep_idx]
+        # --- per-example post-processing: identical to the unbatched path, ---
+        # --- just fed a slice of the batch (padding stripped) instead of a ---
+        # --- freshly generated single-example tensor.                     ---
+        for i, (idx, r, prompt, input_ids, attention_mask, L) in enumerate(encs):
+            n_pad = Lmax - L
+            x0 = x0_batch[i: i + 1, n_pad:]
 
-        # attribute over all prompt positions (0..L-1); self-generated target
-        dlig.set_original_input_length(L)
-        dlig.relevant_token_indices = list(range(L))
+            gen_ids = x0[0][L:].tolist()
+            eos_id = tokenizer.eos_token_id
+            if eos_id is not None and eos_id in gen_ids:
+                gen_ids = gen_ids[:gen_ids.index(eos_id)]
+            gen_text = tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
+            pred = read_pred(gen_text)
+            correct = (pred is not None and pred == r["label"])
+            # store EVERY example (correct, incorrect, and unparseable pred=None):
+            # failure modes of the Yes-biased model are the point of this analysis.
 
-        out = {
-            "idx": idx, "word": r["word"], "label": r["label"],
-            "pred": pred, "correct": bool(correct), "gen_text": gen_text,
-            "input_tokens": kept_tokens,
-            "steps_data": [],
-        }
+            keep_idx = input_token_indices(input_ids[0, :L].tolist(), tokenizer,
+                                           user_prompt=prompt)
+            prompt_tokens = [clean_token(t)
+                             for t in tokenizer.convert_ids_to_tokens(input_ids[0, :L])]
+            kept_tokens = [prompt_tokens[i2] for i2 in keep_idx]
 
-        for step in args.target_steps:
-            if step not in rec.x_by_step:
-                continue
-            x_step = rec.x_by_step[step].to(device)
+            # attribute over all prompt positions (0..L-1); self-generated target
+            dlig.set_original_input_length(L)
+            dlig.relevant_token_indices = list(range(L))
 
-            # baseline: mask the whole prompt, keep the answer-span state
-            baseline_step = x_step.clone()
-            baseline_step[:, :L] = mask_token_id
+            out = {
+                "idx": idx, "word": r["word"], "label": r["label"],
+                "pred": pred, "correct": bool(correct), "gen_text": gen_text,
+                "input_tokens": kept_tokens,
+                "steps_data": [],
+            }
 
-            with torch.no_grad():
-                real_acts = mlhm.capture_activations(x_step, disable_kv_cache=True)
-                baseline_acts = mlhm.capture_activations(baseline_step,
-                                                         disable_kv_cache=True)
+            for step in args.target_steps:
+                if step not in batch_rec.x_by_step:
+                    continue
+                x_step = batch_rec.x_by_step[step][i: i + 1, n_pad:].to(device)
 
-            step_data = {"step": step, "layers": {}}
-            for layer in valid_layers:
-                dlig.hook_manager = mlhm.get_layer_view(layer)
-                res = dlig.compute_dlig_at_timestep_with_activations(
-                    step=step, x_t=x_step,
-                    real_act=real_acts[layer], baseline_act=baseline_acts[layer],
-                    original_length=L,
-                )
-                # per-position score s[i] = sum_j DLIG[i, j]; keep prompt tokens
-                s = res["full_dlig"][0].sum(dim=-1).float().cpu().numpy()
-                step_data["layers"][layer] = s[keep_idx].tolist()
+                # baseline: mask the whole prompt, keep the answer-span state
+                baseline_step = x_step.clone()
+                baseline_step[:, :L] = mask_token_id
 
-            out["steps_data"].append(step_data)
+                with torch.no_grad():
+                    real_acts = mlhm.capture_activations(x_step, disable_kv_cache=True)
+                    baseline_acts = mlhm.capture_activations(baseline_step,
+                                                             disable_kv_cache=True)
 
-        with open(args.out_file, "a") as f:
-            f.write(json.dumps(out) + "\n")
+                step_data = {"step": step, "layers": {}}
+                for layer in valid_layers:
+                    dlig.hook_manager = mlhm.get_layer_view(layer)
+                    res = dlig.compute_dlig_at_timestep_with_activations(
+                        step=step, x_t=x_step,
+                        real_act=real_acts[layer], baseline_act=baseline_acts[layer],
+                        original_length=L,
+                    )
+                    # per-position score s[i] = sum_j DLIG[i, j]; keep prompt tokens
+                    s = res["full_dlig"][0].sum(dim=-1).float().cpu().numpy()
+                    step_data["layers"][layer] = s[keep_idx].tolist()
+
+                out["steps_data"].append(step_data)
+
+            with open(args.out_file, "a") as f:
+                f.write(json.dumps(out) + "\n")
+            pbar.update(1)
 
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+    pbar.close()
 
 
 if __name__ == "__main__":

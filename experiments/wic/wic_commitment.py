@@ -72,7 +72,7 @@ def build_arg_parser():
     p.add_argument("--num_shards", type=int, default=1)
     p.add_argument("--shard_id", type=int, default=0)
     # keep generation identical to wic.py so trajectories match
-    p.add_argument("--gen_steps", type=int, default=12)
+    p.add_argument("--gen_steps", type=int, default=64)
     p.add_argument("--max_new_tokens", type=int, default=6)
     p.add_argument("--seed", type=int, default=42)
     return p

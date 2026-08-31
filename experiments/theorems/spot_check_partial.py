@@ -41,7 +41,7 @@ def build_arg_parser():
     p.add_argument("--step", type=int, default=2, help="Mid-trajectory step (well-behaved F).")
     p.add_argument("--m", type=int, default=12, help="Integration steps (YOUR production m).")
     p.add_argument("--chunk", type=int, default=12)
-    p.add_argument("--gen_steps", type=int, default=8)
+    p.add_argument("--gen_steps", type=int, default=64)
     p.add_argument("--max_new_tokens", type=int, default=64)
     p.add_argument("--prompt", type=str, default="Explain how photosynthesis works.")
     p.add_argument("--system", type=str, default="You are a helpful assistant.")

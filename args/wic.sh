@@ -18,7 +18,7 @@ ONLY_CORRECT=1                            # 1 => attribute only correct examples
 # --- DLIG hyperparameters (paper setting) ---
 M_STEPS=12
 CHUNK=12
-GEN_STEPS=12
+GEN_STEPS=64
 MAX_NEW_TOKENS=6
 SEED=42
 SCORE_MODE="meancentered"

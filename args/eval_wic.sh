@@ -14,7 +14,7 @@ MODEL_PATH="models/diffugpt-m-wic"
 WIC_JSONL="data/wic_test_raw.jsonl"
 N=-1
 
-GEN_STEPS=12
+GEN_STEPS=64
 MAX_NEW_TOKENS=6
 SEED=42
 

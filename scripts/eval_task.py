@@ -18,24 +18,19 @@ diffugpt/scripts/eval_task.py on the same checkpoint with matched
 hyperparameters is a clean A/B test of the two generation stacks. If the two
 disagree, that's a real bug in one of them, not a hyperparameter mismatch.
 
-SEPARATOR TOKEN (WiC only)
----------------------------
-WiC ddm-sft training data is formatted as
-    <bos> question ====== <answer> <eos>
-(see diffugpt/scripts/wic_to_diffusft.py). The shared, family-agnostic
+SEPARATOR TOKEN (WiC / ProsQA only)
+------------------------------------
+Both WiC and ProsQA ddm-sft training data are formatted as
+    <bos> question ====== <CoT/answer> <eos>
+(see diffugpt/scripts/{wic,prosqa}_to_diffusft.py). The shared, family-agnostic
 build_prompt_inputs() in experiments/theorems/verify_completeness.py does NOT
 know about this task-specific separator (it is also used by Dream and other
-non-WiC experiments), so this script appends it itself for WiC -- mirroring
-the fix applied in experiments/wic/{wic,wic_commitment,eval_wic}.py. Omitting
-it runs the model off-distribution (per diffugpt/scripts/eval_wic.py's own
-comment, this tanks accuracy).
-
-ProsQA deliberately does NOT append the separator here (task["append_sep"] is
-a no-op, _no_sep) -- experiments/prosqa/prosqa_contrastive_dlig.py's own
-separator-appending code was reverted back to its original no-delimiter
-behavior, and this script mirrors that so the two stay consistent. infill
-runs on the BASE checkpoint (no SFT, no separator either -- see the infill
-section below).
+non-WiC/ProsQA experiments), so this script appends it itself -- mirroring the
+fix applied in experiments/wic/{wic,wic_commitment,eval_wic}.py and
+experiments/prosqa/prosqa_contrastive_dlig.py. Omitting it runs the model
+off-distribution (per diffugpt/scripts/eval_prosqa.py's own comment, this is
+"what tanked accuracy to ~4%"). infill runs on the BASE checkpoint (no SFT,
+no separator -- see the infill section below).
 
 infill: reuses experiments/infill/attribution_infill.py's
 infill_generate_trajectory and its oracle-span-length construction (gold
@@ -73,16 +68,11 @@ from models.backends import build_backend
 from models.model_manager import ModelManager
 from experiments.theorems.verify_completeness import build_prompt_inputs, set_seed
 from experiments.wic.wic import wic_prompt, load_wic, append_sep_token as wic_append_sep_token
+from experiments.prosqa.prosqa_contrastive_dlig import (
+    append_sep_token as prosqa_append_sep_token,
+)
 from experiments.infill.attribution_infill import infill_generate_trajectory, load_stories
 from experiments.prosqa.bucket_prosqa import label_row as prosqa_label_row
-
-
-def _no_sep(tokenizer, input_ids, attention_mask, L):
-    """ProsQA deliberately does NOT append the '======' separator, matching
-    experiments/prosqa/prosqa_contrastive_dlig.py's reverted (no-delimiter)
-    generation -- kept consistent so this eval script always mirrors whatever
-    that attribution script actually does."""
-    return input_ids, attention_mask, L
 
 
 # --------------------------------------------------------------------------- #
@@ -194,7 +184,7 @@ TASKS = {
         default_max_new_tokens=64,
         loader=load_prosqa,
         prompt_fn=lambda ex: ex["question"].strip(),
-        append_sep=_no_sep,
+        append_sep=prosqa_append_sep_token,
     ),
     "infill": dict(
         default_data="data/rocstories_test.jsonl",
@@ -213,12 +203,12 @@ def build_arg_parser():
     ap.add_argument("--data", default=None,
                     help="Defaults to the per-task file under data/ if omitted.")
     ap.add_argument("--n", type=int, default=-1, help="-1 => all examples.")
-    ap.add_argument("--gen_steps", type=int, default=12,
-                    help="Denoising steps T. DLIG's own experiment-script "
-                         "default is 12; pass the SAME value to "
-                         "diffugpt/scripts/eval_task.py's --diffusion_steps "
-                         "for a matched comparison (e.g. 64, the train/paper "
-                         "default).")
+    ap.add_argument("--gen_steps", type=int, default=64,
+                    help="Denoising steps T. Defaults to 64 (the training "
+                         "default and diffugpt/scripts/eval_task.py's "
+                         "--diffusion_steps default) so a bare run is already "
+                         "matched; pass the SAME value to both scripts if you "
+                         "override it.")
     ap.add_argument("--max_new_tokens", type=int, default=None,
                     help="Masked generation length. Defaults to the DLIG "
                          "per-task default (wic=8, prosqa=64) if omitted; "

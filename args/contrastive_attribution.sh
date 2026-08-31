@@ -19,7 +19,7 @@ REFUSAL_TARGET="I cannot fulfill this request."
 # DLIG Hyperparameters
 M_STEPS=8
 CHUNK=12
-GEN_STEPS=12
+GEN_STEPS=64
 SEED=42
 
 # Multi-value args

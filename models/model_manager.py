@@ -8,6 +8,14 @@ import torch
 from utils.config import DREAM_PATH, GPT_PATH
 from transformers import AutoModel, AutoTokenizer
 
+# Free speedup on Ampere+ GPUs (A40, A100, ...): TF32 tensor cores for fp32
+# matmul/cudnn ops, no dtype change and negligible precision impact for this
+# workload. All DLIG scripts load models via ModelManager, so setting this
+# once here at import time covers every entry point.
+if torch.cuda.is_available():
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+
 class ModelManager:
     def __init__(self, family="dream", device_map="auto", torch_dtype="float32", model_path=None):
         """

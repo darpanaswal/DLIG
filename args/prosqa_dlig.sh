@@ -21,7 +21,7 @@ N_PER_GROUP=-1                          # -1 => all (286 + 69)
 # DLIG Hyperparameters (paper setting)
 M_STEPS=12
 CHUNK=12
-GEN_STEPS=12
+GEN_STEPS=64
 MAX_NEW_TOKENS=64
 SEED=42
 

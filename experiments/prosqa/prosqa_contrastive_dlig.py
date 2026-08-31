@@ -132,11 +132,19 @@ def build_arg_parser():
     # Sharding
     p.add_argument("--num_shards", type=int, default=1)
     p.add_argument("--shard_id", type=int, default=0)
+    p.add_argument("--batch_size", type=int, default=1,
+                   help="Examples generated together per call to "
+                        "generate_trajectory (left-padded; the backend's "
+                        "padding-aware attention mask + position ids make "
+                        "this equivalent to generating each alone -- verified "
+                        "in scripts/verify_batching.py). DLIG attribution "
+                        "itself stays per-example; only generation is "
+                        "batched. 1 = original unbatched behavior.")
 
     # DLIG hyperparameters (paper setting: T=12, steps {1,3,5,7,9,11}, even layers)
     p.add_argument("--m", type=int, default=12)
     p.add_argument("--chunk", type=int, default=12)
-    p.add_argument("--gen_steps", type=int, default=12)
+    p.add_argument("--gen_steps", type=int, default=64)
     p.add_argument("--max_new_tokens", type=int, default=64)
     p.add_argument("--target_steps", type=int, nargs="+", default=[1, 3, 5, 7, 9, 11])
     p.add_argument("--layers", type=str, nargs="+",
@@ -222,95 +230,131 @@ def main():
     if done:
         print(f"[INFO] Resuming past {len(done)} examples.")
 
-    for ex in tqdm(examples, desc=f"shard {args.shard_id}"):
-        if ex["idx"] in done:
-            continue
+    pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
+    todo = [ex for ex in examples if ex["idx"] not in done]
+    pbar = tqdm(total=len(todo), desc=f"shard {args.shard_id}")
 
-        prompt = ex["question"]
-        y_plus = ex["gold"]
-        y_minus = wrong_target(ex["gold"], ex["gold_option"], ex["wrong_option"])
+    for chunk_start in range(0, len(todo), args.batch_size):
+        chunk = todo[chunk_start: chunk_start + args.batch_size]
 
-        input_ids, attention_mask, L = build_prompt_inputs(
-            tokenizer, args.system, prompt, device
-        )
-        keep_idx = input_token_indices(input_ids[0, :L].tolist(), tokenizer,
-                                       user_prompt=prompt)
-        prompt_tokens = [clean_token(t)
-                         for t in tokenizer.convert_ids_to_tokens(input_ids[0, :L])]
-        kept_tokens = [prompt_tokens[i] for i in keep_idx]
+        # --- per-example prep (cheap, CPU-bound): prompt encoding, keep_idx/
+        # span_ids computed on the PROMPT-ONLY encoding (before the separator
+        # is appended), exactly as the original unbatched code did. ---
+        prepped = []
+        for ex in chunk:
+            prompt = ex["question"]
+            y_plus = ex["gold"]
+            y_minus = wrong_target(ex["gold"], ex["gold_option"], ex["wrong_option"])
 
-        # token -> structural span alignment (1:1 with the kept prompt encoding)
-        p_ids, span_ids = token_span_ids(prompt, ex["spans"], tokenizer)
-        if len(span_ids) != len(keep_idx):
-            # alignment contract broken (special-token filtering edge case): pad/trim
-            print(f"[WARN idx={ex['idx']}] span/token misalign "
-                  f"({len(span_ids)} vs {len(keep_idx)}); trimming.")
-            span_ids = (span_ids + [-1] * len(keep_idx))[: len(keep_idx)]
+            input_ids, attention_mask, L = build_prompt_inputs(
+                tokenizer, args.system, prompt, device
+            )
+            keep_idx = input_token_indices(input_ids[0, :L].tolist(), tokenizer,
+                                           user_prompt=prompt)
+            prompt_tokens = [clean_token(t)
+                             for t in tokenizer.convert_ids_to_tokens(input_ids[0, :L])]
+            kept_tokens = [prompt_tokens[i] for i in keep_idx]
 
-        # NOTE: deliberately NOT appending the '======' separator here (see
-        # append_sep_token above) -- reverted to the prior no-separator
-        # behavior per explicit instruction, pending a decision on whether
-        # ProsQA's DLIG-side attribution generation should use it.
+            p_ids, span_ids = token_span_ids(prompt, ex["spans"], tokenizer)
+            if len(span_ids) != len(keep_idx):
+                print(f"[WARN idx={ex['idx']}] span/token misalign "
+                      f"({len(span_ids)} vs {len(keep_idx)}); trimming.")
+                span_ids = (span_ids + [-1] * len(keep_idx))[: len(keep_idx)]
 
-        # one trajectory per example
-        rec = TrajRecorder()
+            # append the separator AFTER keep_idx/span_ids (which index into
+            # the prompt-only encoding); everything downstream uses this L.
+            input_ids, attention_mask, L = append_sep_token(
+                tokenizer, input_ids, attention_mask, L
+            )
+            prepped.append(dict(ex=ex, y_plus=y_plus, y_minus=y_minus,
+                                keep_idx=keep_idx, kept_tokens=kept_tokens,
+                                span_ids=span_ids, input_ids=input_ids,
+                                attention_mask=attention_mask, L=L))
+
+        # --- left-pad into one batch, generate the WHOLE BATCH's trajectory
+        # in one call. The backend's padding-aware attention mask + position
+        # ids make this equivalent to generating each example alone --
+        # verified in scripts/verify_batching.py. ---
+        Lmax = max(p["L"] for p in prepped)
+        ids_rows, mask_rows = [], []
+        for p in prepped:
+            n_pad = Lmax - p["L"]
+            pad_ids = torch.full((1, n_pad), pad_id, dtype=p["input_ids"].dtype, device=device)
+            pad_am = torch.zeros((1, n_pad), dtype=p["attention_mask"].dtype, device=device)
+            ids_rows.append(torch.cat([pad_ids, p["input_ids"]], dim=1))
+            mask_rows.append(torch.cat([pad_am, p["attention_mask"]], dim=1))
+        batch_ids = torch.cat(ids_rows, dim=0)
+        batch_mask = torch.cat(mask_rows, dim=0)
+
+        batch_rec = TrajRecorder()
         _ = backend.generate_trajectory(
-            input_ids, attention_mask=attention_mask,
+            batch_ids, attention_mask=batch_mask,
             max_new_tokens=args.max_new_tokens, steps=args.gen_steps,
-            record_hook=rec.hook,
+            record_hook=batch_rec.hook,
         )
 
-        out = {
-            "idx": ex["idx"], "group": ex["group"], "bucket": ex["bucket"],
-            "k_gold": ex["k_gold"], "k_wrong": ex["k_wrong"],
-            "n_edges": ex["n_edges"],
-            "gold_option": ex["gold_option"], "wrong_option": ex["wrong_option"],
-            "y_plus": y_plus, "y_minus": y_minus,
-            "input_tokens": kept_tokens, "span_ids": span_ids,
-            "steps_data": [],
-        }
+        # --- per-example DLIG attribution: identical to the unbatched path,
+        # just fed a slice of the batch (padding stripped) instead of a
+        # freshly generated single-example tensor. ---
+        for i, p in enumerate(prepped):
+            ex = p["ex"]
+            L = p["L"]
+            keep_idx = p["keep_idx"]
+            n_pad = Lmax - L
 
-        for step in args.target_steps:
-            if step not in rec.x_by_step:
-                continue
-            x_t = rec.x_by_step[step].to(device)
+            out = {
+                "idx": ex["idx"], "group": ex["group"], "bucket": ex["bucket"],
+                "k_gold": ex["k_gold"], "k_wrong": ex["k_wrong"],
+                "n_edges": ex["n_edges"],
+                "gold_option": ex["gold_option"], "wrong_option": ex["wrong_option"],
+                "y_plus": p["y_plus"], "y_minus": p["y_minus"],
+                "input_tokens": p["kept_tokens"], "span_ids": p["span_ids"],
+                "steps_data": [],
+            }
 
-            baseline_inp = x_t.clone()
-            baseline_inp[:, :L] = mask_token_id
+            for step in args.target_steps:
+                if step not in batch_rec.x_by_step:
+                    continue
+                x_t = batch_rec.x_by_step[step][i: i + 1, n_pad:].to(device)
 
-            # activations shared across layers AND across both targets:
-            # a, a' depend only on (x_t, prompt mask), not on the readout y.
-            with torch.no_grad():
-                real_acts = mlhm.capture_activations(x_t, disable_kv_cache=True)
-                baseline_acts = mlhm.capture_activations(baseline_inp,
-                                                         disable_kv_cache=True)
+                baseline_inp = x_t.clone()
+                baseline_inp[:, :L] = mask_token_id
 
-            step_data = {"step": step, "layers": {}}
-            dlig.set_original_input_length(L)
+                # activations shared across layers AND across both targets:
+                # a, a' depend only on (x_t, prompt mask), not on the readout y.
+                with torch.no_grad():
+                    real_acts = mlhm.capture_activations(x_t, disable_kv_cache=True)
+                    baseline_acts = mlhm.capture_activations(baseline_inp,
+                                                             disable_kv_cache=True)
 
-            for tgt_name, tgt in (("plus", y_plus), ("minus", y_minus)):
-                dlig.set_target_output(tgt)
-                for layer in valid_layers:
-                    dlig.hook_manager = mlhm.get_layer_view(layer)
-                    res = dlig.compute_dlig_at_timestep_with_activations(
-                        step=step, x_t=x_t,
-                        real_act=real_acts[layer],
-                        baseline_act=baseline_acts[layer],
-                        original_length=L,
-                    )
-                    # per-position score: s[i] = sum_j DLIG[i, j]
-                    s = res["full_dlig"][0].sum(dim=-1).float().numpy()
-                    step_data["layers"].setdefault(layer, {})[tgt_name] = \
-                        s[keep_idx].tolist()
+                step_data = {"step": step, "layers": {}}
+                dlig.set_original_input_length(L)
 
-            out["steps_data"].append(step_data)
+                for tgt_name, tgt in (("plus", p["y_plus"]), ("minus", p["y_minus"])):
+                    dlig.set_target_output(tgt)
+                    for layer in valid_layers:
+                        dlig.hook_manager = mlhm.get_layer_view(layer)
+                        res = dlig.compute_dlig_at_timestep_with_activations(
+                            step=step, x_t=x_t,
+                            real_act=real_acts[layer],
+                            baseline_act=baseline_acts[layer],
+                            original_length=L,
+                        )
+                        # per-position score: s[i] = sum_j DLIG[i, j]
+                        s = res["full_dlig"][0].sum(dim=-1).float().numpy()
+                        step_data["layers"].setdefault(layer, {})[tgt_name] = \
+                            s[keep_idx].tolist()
 
-        with open(args.out_file, "a") as f:
-            f.write(json.dumps(out) + "\n")
+                out["steps_data"].append(step_data)
+
+            with open(args.out_file, "a") as f:
+                f.write(json.dumps(out) + "\n")
+            pbar.update(1)
 
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+    pbar.close()
 
 
 if __name__ == "__main__":

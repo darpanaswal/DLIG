@@ -72,7 +72,7 @@ def build_arg_parser():
     # DLIG hyperparameters
     p.add_argument("--m", type=int, default=12, help="Integration steps. Lower = faster.")
     p.add_argument("--chunk", type=int, default=12, help="Integration batch size (VRAM control).")
-    p.add_argument("--gen_steps", type=int, default=12, help="Diffusion generation steps.")
+    p.add_argument("--gen_steps", type=int, default=64, help="Diffusion generation steps.")
     p.add_argument("--max_new_tokens", type=int, default=64)
     p.add_argument("--target_steps", type=int, nargs="+", default=[5],
                    help="Sparse timesteps to analyze.")

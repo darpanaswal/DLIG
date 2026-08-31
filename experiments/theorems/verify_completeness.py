@@ -101,7 +101,7 @@ class TrajRecorder:
     def hook(self, step, x, logits):
         if step is None:
             return logits
-        self.x_by_step[int(step)] = x.detach().to("cpu").clone()
+        self.x_by_step[int(step)] = x.detach().clone()
         return logits
 
     def steps(self):
@@ -320,7 +320,7 @@ def build_arg_parser():
     p.add_argument("--prompt", type=str, default="Explain how photosynthesis works.")
     p.add_argument("--system", type=str, default="You are a helpful assistant.")
 
-    p.add_argument("--generation_steps", type=int, default=8)
+    p.add_argument("--generation_steps", type=int, default=64)
     p.add_argument("--max_new_tokens", type=int, default=64)
 
     p.add_argument("--check_steps", type=int, nargs="+", default=None,

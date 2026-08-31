@@ -108,68 +108,108 @@ class DiffuGPTBackend(ModelBackend):
         raise ValueError(f"Unsupported layer spec: {layer_spec}")
 
     # -- embedding (token + absolute position) ----------------------------- #
-    def _embed(self, input_ids: torch.Tensor) -> torch.Tensor:
+    def _embed(self, input_ids: torch.Tensor,
+               position_ids: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         GPT-2 input embedding: wte(token) + wpe(position). Positions are baked in
         HERE (not per-layer), which is the key contrast with Dream's RoPE.
+
+        position_ids: optional [B, S] override. Required for correct BATCHED,
+        left-padded generation -- GPT-2's absolute wpe means a left-padded
+        example's real tokens must still get position ids starting at 0, not
+        the raw 0..S-1 range (which would shift them by however much padding
+        precedes them, purely as an artifact of batch composition). Default
+        (None) reproduces the original unpadded behavior exactly.
         """
         B, S = input_ids.shape
         device = input_ids.device
-        pos = torch.arange(S, device=device).unsqueeze(0).expand(B, -1)
-        return self.wte(input_ids) + self.wpe(pos)
+        if position_ids is None:
+            position_ids = torch.arange(S, device=device).unsqueeze(0).expand(B, -1)
+        return self.wte(input_ids) + self.wpe(position_ids)
 
     # -- GPT-2 block call: full attention, no cache ------------------------ #
     @staticmethod
-    def _full_attn_mask(B: int, S: int, device, dtype) -> torch.Tensor:
+    def _build_attn_mask(B: int, S: int, device, dtype,
+                          key_padding_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
-        4D all-visible additive mask [B, 1, S, S] of zeros. Combined with the
+        4D additive attention mask [B, 1, S, S]. Combined with the
         attention_patch (GPT2Model.forward uses a 4D mask verbatim) and bias.fill_(True)
         on each block (disables the buffer causal mask), this yields FULL bidirectional
-        attention. Validated: row attends uniformly across all positions, not lower-tri.
-        """
-        return torch.zeros(B, 1, S, S, device=device, dtype=dtype)
+        attention subject to key_padding_mask. Validated: row attends uniformly
+        across all real (non-pad) positions, not lower-tri.
 
-    def _call_block(self, block, hidden_states: torch.Tensor) -> torch.Tensor:
+        key_padding_mask: optional [B, S], 1=real token, 0=padding. When None
+        (the original, single-example behavior), every position is visible to
+        every other -- correct only when there is no padding in the batch. For
+        a padded batch, padding MUST be excluded from every query's attention
+        (a bidirectional model would otherwise let real tokens attend to
+        neighboring pad garbage, and the amount of that garbage depends on
+        batch composition -- this was verified empirically to corrupt results
+        for any padded example, independent of the model's trained weights).
         """
-        Call one GPT2Block (4.44 signature) with a 4D all-visible mask so attention
-        is bidirectional. Requires: model loaded with attn_implementation='eager',
+        if key_padding_mask is None:
+            return torch.zeros(B, 1, S, S, device=device, dtype=dtype)
+        additive = (1.0 - key_padding_mask.to(dtype)) * torch.finfo(dtype).min
+        return additive[:, None, None, :].expand(B, 1, S, S).clone()
+
+    def _call_block(self, block, hidden_states: torch.Tensor,
+                     attn_mask: torch.Tensor) -> torch.Tensor:
+        """
+        Call one GPT2Block (4.44 signature) with a precomputed 4D mask.
+        Requires: model loaded with attn_implementation='eager',
         replace_attention_mask() applied, and block.attn.bias filled True (all done
         at load in ModelManager._load_diffugpt). Hidden states are element 0.
         """
-        B, S, _ = hidden_states.shape
-        mask = self._full_attn_mask(B, S, hidden_states.device, hidden_states.dtype)
         out = block(
             hidden_states,
             layer_past=None,
-            attention_mask=mask,
+            attention_mask=attn_mask,
             head_mask=None,
             use_cache=False,
             output_attentions=False,
         )
         return out[0] if isinstance(out, tuple) else out
 
-    def suffix_forward(self, hidden_states: torch.Tensor, start_layer_idx: int) -> torch.Tensor:
+    def suffix_forward(self, hidden_states: torch.Tensor, start_layer_idx: int,
+                        key_padding_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Replay blocks[start_layer_idx:] -> ln_f -> lm_head.
 
         NOTE: positions are already inside `hidden_states` (added at embed). No
         position argument is threaded through the blocks, unlike Dream's RoPE path.
+
+        key_padding_mask: see _build_attn_mask. None (default) = fully visible,
+        the original behavior; every current caller omits it (single example,
+        no padding), so this is backward-compatible.
         """
+        B, S, _ = hidden_states.shape
+        attn_mask = self._build_attn_mask(B, S, hidden_states.device, hidden_states.dtype,
+                                          key_padding_mask)
         for block in self.blocks[start_layer_idx:]:
-            hidden_states = self._call_block(block, hidden_states)
+            hidden_states = self._call_block(block, hidden_states, attn_mask)
         hidden_states = self.ln_f(hidden_states)
         logits = self.lm_head(hidden_states)   # [B, S, |V|]
         return logits
 
-    def forward_logits(self, input_ids: torch.Tensor) -> torch.Tensor:
+    def forward_logits(self, input_ids: torch.Tensor,
+                        key_padding_mask: Optional[torch.Tensor] = None,
+                        position_ids: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Full forward from token ids: embed (wte+wpe) -> all blocks -> ln_f -> lm_head.
         Equivalent to suffix_forward over the embeddings, kept explicit for the
         activation-capture path (hooks fire on real block modules during this call).
+
+        key_padding_mask/position_ids: see _build_attn_mask/_embed. Both None
+        (default) reproduces the original unpadded, single-example behavior
+        exactly; every existing caller omits them. Required together (not
+        independently) for correct batched left-padded generation.
         """
-        hidden_states = self._embed(input_ids)
+        hidden_states = self._embed(input_ids, position_ids)
+        B, S, _ = hidden_states.shape
+        attn_mask = self._build_attn_mask(B, S, hidden_states.device, hidden_states.dtype,
+                                          key_padding_mask)
         for block in self.blocks:
-            hidden_states = self._call_block(block, hidden_states)
+            hidden_states = self._call_block(block, hidden_states, attn_mask)
         hidden_states = self.ln_f(hidden_states)
         return self.lm_head(hidden_states)
 
@@ -223,6 +263,29 @@ class DiffuGPTBackend(ModelBackend):
         # t = T (first step): all maskable positions are [MASK]
         xt = x.masked_fill(maskable_mask, mask_id)
 
+        # Padding-aware attention + position ids over the FULL canvas (prompt +
+        # generation region). Single-example callers pass an all-ones prompt
+        # attention_mask (or None), for which this reduces EXACTLY to the old
+        # unpadded behavior (verified: fully-visible mask, plain 0..S-1
+        # positions) -- so this is backward-compatible, not batching-only.
+        # Required for correct BATCHED left-padded generation: without it, pad
+        # tokens leak into attention for every other position (a bidirectional
+        # model, unlike a causal one, has no structural reason to ignore them),
+        # and left-padding silently shifts real tokens' absolute position
+        # embeddings by however much padding precedes them -- both corrupt
+        # results for any padded example, confirmed empirically independent of
+        # trained weights (mask-only fix insufficient; both fixes needed).
+        if attention_mask is not None:
+            prompt_kpm = attention_mask.to(device=device, dtype=torch.long)
+        else:
+            prompt_kpm = torch.ones((B, L), dtype=torch.long, device=device)
+        gen_kpm = torch.ones((B, max_new_tokens), dtype=torch.long, device=device)
+        key_padding_mask = torch.cat([prompt_kpm, gen_kpm], dim=1)  # [B, L+max_new_tokens]
+        # Standard left-pad-safe position ids: real (mask=1) tokens get
+        # 0,1,2,... in order regardless of how much padding precedes them;
+        # padding gets 0 (arbitrary -- excluded from attention anyway).
+        position_ids = (key_padding_mask.cumsum(dim=1) - 1).clamp(min=0)
+
         def _predict(xt_in):
             # Defensive: any token id fed back to wte must be < vocab_size, else a
             # CUDA index assert fires on the NEXT embed. Clamp guards against stray
@@ -234,7 +297,8 @@ class DiffuGPTBackend(ModelBackend):
                     f"max={int(xt_in.max())}, min={int(xt_in.min())}. "
                     f"Likely a mis-loaded checkpoint or wrong mask_token_id."
                 )
-            logits = self.forward_logits(xt_in)
+            logits = self.forward_logits(xt_in, key_padding_mask=key_padding_mask,
+                                         position_ids=position_ids)
             filt = top_p_logits(logits / self.logits_temp, p=self.topp_temp)
             scores = torch.log_softmax(filt, dim=-1)
             x0 = dists.Categorical(logits=scores).sample()
@@ -248,7 +312,7 @@ class DiffuGPTBackend(ModelBackend):
         # --- step index 0 (t = T) ---
         logits, x0 = _predict(xt)
         if record_hook is not None:
-            record_hook(0, xt.detach().to("cpu").clone(), logits)
+            record_hook(0, xt.detach().clone(), logits)
 
         # --- steps t = T-1 .. 1 ---
         # The HKUNLP loop runs diffusion_steps-1 reveal iterations. We index the
@@ -263,7 +327,7 @@ class DiffuGPTBackend(ModelBackend):
 
             logits, x0 = _predict(xt)
             if record_hook is not None:
-                record_hook(rec_idx, xt.detach().to("cpu").clone(), logits)
+                record_hook(rec_idx, xt.detach().clone(), logits)
             rec_idx += 1
 
         return x0

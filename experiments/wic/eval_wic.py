@@ -68,7 +68,7 @@ def main():
     ap.add_argument("--wic_jsonl", default="data/wic_test_raw.jsonl")
     ap.add_argument("--out_file", default="outputs/wic/eval_simple.json")
     ap.add_argument("--n", type=int, default=-1)
-    ap.add_argument("--gen_steps", type=int, default=12)
+    ap.add_argument("--gen_steps", type=int, default=64)
     ap.add_argument("--max_new_tokens", type=int, default=8)
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()

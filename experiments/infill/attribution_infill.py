@@ -131,7 +131,7 @@ def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook=N
     # step index 0 (t = T): span fully masked
     logits, x0 = _predict(xt)
     if record_hook is not None:
-        record_hook(0, xt.detach().to("cpu").clone(), logits)
+        record_hook(0, xt.detach().clone(), logits)
 
     # steps t = T-1 .. 1: progressively reveal span tokens
     rec_idx = 1
@@ -143,7 +143,7 @@ def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook=N
         cur_maskable = cur_maskable.masked_fill(reveal, False)
         logits, x0 = _predict(xt)
         if record_hook is not None:
-            record_hook(rec_idx, xt.detach().to("cpu").clone(), logits)
+            record_hook(rec_idx, xt.detach().clone(), logits)
         rec_idx += 1
 
     return x0
@@ -204,7 +204,7 @@ def build_arg_parser():
     # DLIG hyperparameters
     p.add_argument("--m", type=int, default=8, help="Integration steps.")
     p.add_argument("--chunk", type=int, default=12, help="Integration batch size.")
-    p.add_argument("--gen_steps", type=int, default=12,
+    p.add_argument("--gen_steps", type=int, default=64,
                    help="Diffusion denoising steps T for the infill span.")
     p.add_argument("--target_steps", type=int, nargs="+", default=[1, 3, 5, 7, 9, 11],
                    help="Which recorded denoising steps to attribute at.")

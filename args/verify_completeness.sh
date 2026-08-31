@@ -19,7 +19,7 @@ TORCH_DTYPE="float32"
 PROMPT="Explain how photosynthesis works."
 SYSTEM_PROMPT="You are a helpful assistant."
 
-GEN_STEPS=12                                 # match analyzed config (T=12)
+GEN_STEPS=64                                 # training default (was T=12, the paper's stated setting)
 MAX_NEW_TOKENS=64
 
 INTEGRATION_BATCH_SIZE=5

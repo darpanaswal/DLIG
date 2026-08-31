@@ -19,7 +19,7 @@ MAX_SIDE_TOKENS=120                   # cap tokens kept per side for the positio
 # DLIG Hyperparameters
 M_STEPS=8
 CHUNK=12
-GEN_STEPS=12                          # diffusion denoising steps T for the span
+GEN_STEPS=64                          # diffusion denoising steps T for the span (training default)
 SEED=42
 SCORE_MODE="meancentered"             # n_t-normalized, comparable across timesteps
 
