@@ -59,12 +59,22 @@ def main():
     ap.add_argument("--gen_steps", type=int, default=64)
     ap.add_argument("--max_new_tokens", type=int, default=None)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--disable_tf32", action="store_true",
+                    help="Force full fp32 matmul precision (undo model_manager.py's "
+                         "global TF32 enable) to test whether TF32's reduced "
+                         "mantissa precision is amplifying batched-vs-single-example "
+                         "numerical drift across GPT-2-medium's 24 layers.")
     args = ap.parse_args()
 
     data_path = args.data or ("data/wic_test_raw.jsonl" if args.task == "wic"
                                else "data/prosqa_test.json")
     max_new_tokens = args.max_new_tokens or (8 if args.task == "wic" else 64)
     append_sep = wic_append_sep_token if args.task == "wic" else prosqa_append_sep_token
+
+    if args.disable_tf32:
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        print("[INFO] TF32 forced OFF (full fp32 matmul precision)")
 
     set_seed(args.seed)
     mm = ModelManager(family="diffugpt",
