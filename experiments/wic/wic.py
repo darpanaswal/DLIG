@@ -138,7 +138,8 @@ def build_arg_parser():
     p.add_argument("--chunk", type=int, default=12)
     p.add_argument("--gen_steps", type=int, default=64)
     p.add_argument("--max_new_tokens", type=int, default=6)
-    p.add_argument("--target_steps", type=int, nargs="+", default=[1, 3, 5, 7, 9, 11])
+    p.add_argument("--target_steps", type=int, nargs="+", default=[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63],
+                   help="Denoising steps to attribute at, every 2nd step from 1 to gen_steps-1 -- same absolute cadence as the paper's T=12 setting ([1,3,5,7,9,11]), extended to T=64 (32 points). More points = more sequential attribution compute per example, NOT more peak memory (batch_size only affects the generation phase); override to match a different --gen_steps.")
     p.add_argument("--layers", type=str, nargs="+",
                    default=[str(i) for i in range(0, 24, 2)])
     p.add_argument("--score_mode", type=str, default="meancentered")
@@ -282,6 +283,22 @@ def main():
                 if step not in batch_rec.x_by_step:
                     continue
                 x_step = batch_rec.x_by_step[step][i: i + 1, n_pad:].to(device)
+
+                # Degenerate-step guard (self-generated target, matching
+                # attribution_infill.py's n_scoreable==0 skip): if nothing in
+                # the answer region has been revealed yet (all still [MASK]),
+                # the self-generated score F_t is degenerate and its gradient
+                # is exactly zero -- skip rather than run the full integration
+                # just to print dlig_attribution.py's near-zero-gradient
+                # warning. Early target_steps become MUCH more likely to hit
+                # this now that gen_steps=64 (was 12): the same absolute step
+                # index is a much smaller fraction of the trajectory.
+                n_committed = int((x_step[0, L:] != mask_token_id).sum().item())
+                if n_committed == 0:
+                    step_data = {"step": step, "n_committed": 0,
+                                "skipped": True, "layers": {}}
+                    out["steps_data"].append(step_data)
+                    continue
 
                 # baseline: mask the whole prompt, keep the answer-span state
                 baseline_step = x_step.clone()
