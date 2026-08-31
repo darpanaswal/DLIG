@@ -60,10 +60,12 @@ def main():
     ap.add_argument("--max_new_tokens", type=int, default=None)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--disable_tf32", action="store_true",
-                    help="Force full fp32 matmul precision (undo model_manager.py's "
-                         "global TF32 enable) to test whether TF32's reduced "
-                         "mantissa precision is amplifying batched-vs-single-example "
-                         "numerical drift across GPT-2-medium's 24 layers.")
+                    help="No longer needed for correctness -- model_manager.py "
+                         "no longer enables TF32 by default (confirmed via this "
+                         "script that it corrupts batched generation by up to "
+                         "~0.8 in logit space). Kept as an explicit override in "
+                         "case TF32 is re-enabled or torch's global default "
+                         "changes; forces full fp32 matmul precision.")
     args = ap.parse_args()
 
     data_path = args.data or ("data/wic_test_raw.jsonl" if args.task == "wic"
@@ -138,13 +140,16 @@ def main():
         n_pad = Lmax - L
         d = (batch_logits[i, n_pad:] - alone_logits[i]).abs().max().item()
         worst = max(worst, d)
-        flag = "OK" if d < 1e-3 else "MISMATCH"
+        flag = "OK" if d < 1e-2 else "MISMATCH"
         print(f"  example {i} (L={L}, pad={n_pad:3d}): diff={d:.4e}  [{flag}]")
 
     print(f"\n[SUMMARY] worst-case diff across {len(lens)} examples: {worst:.4e}")
-    if worst < 1e-3:
+    if worst < 1e-2:
         print("PASS -- batched generation matches single-example generation "
-              "(diffs are float32 noise, not a real divergence).")
+              "(diffs are ordinary fp32 GPU accumulation noise -- calibrated "
+              "against a real checkpoint at ~1e-3 to 1e-4, NOT a real "
+              "divergence, which showed up two-to-three orders of magnitude "
+              "larger, ~0.1-0.8, when TF32 was enabled -- see model_manager.py).")
     else:
         print("FAIL -- batched and single-example generation disagree beyond "
               "float noise. Do not trust batched results until this is "

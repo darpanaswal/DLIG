@@ -8,13 +8,14 @@ import torch
 from utils.config import DREAM_PATH, GPT_PATH
 from transformers import AutoModel, AutoTokenizer
 
-# Free speedup on Ampere+ GPUs (A40, A100, ...): TF32 tensor cores for fp32
-# matmul/cudnn ops, no dtype change and negligible precision impact for this
-# workload. All DLIG scripts load models via ModelManager, so setting this
-# once here at import time covers every entry point.
-if torch.cuda.is_available():
-    torch.backends.cuda.matmul.allow_tf32 = True
-    torch.backends.cudnn.allow_tf32 = True
+# NOTE: TF32 (torch.backends.cuda.matmul.allow_tf32) was tried here as a
+# "free" Ampere+ speedup but reverted -- verified on a real checkpoint
+# (scripts/verify_batching.py) that it corrupts batched generation by up to
+# ~0.8 in logit space relative to single-example generation (24-layer GPT-2
+# accumulates TF32's reduced mantissa precision into much more than the
+# claimed "negligible" impact). With TF32 off, batched vs single-example
+# matches to ~1e-3, ordinary fp32 GPU noise. Precision matters more than
+# speed here -- do not re-enable without re-running that verification.
 
 class ModelManager:
     def __init__(self, family="dream", device_map="auto", torch_dtype="float32", model_path=None):
