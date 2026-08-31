@@ -2,9 +2,11 @@
 # scripts/verify_batching.py
 """
 Verifies that batched generation matches single-example generation on the
-ACTUAL trained checkpoint, for WiC and ProsQA (the two tasks with batching
-wired into their generation loops -- see experiments/wic/wic.py and
-experiments/prosqa/prosqa_contrastive_dlig.py).
+ACTUAL trained checkpoint, for all three tasks with batching wired into their
+generation loops -- see experiments/wic/wic.py,
+experiments/prosqa/prosqa_contrastive_dlig.py, and
+experiments/infill/attribution_infill.py (via scripts/eval_task.py's
+build_infill_batch, which infill's own main loop also uses).
 
 This is the real-weights counterpart to the random-init mechanism test used
 to design the fix (models/backends/diffugpt.py's padding-aware attn mask +
@@ -13,7 +15,7 @@ weights; this script confirms it holds for your actual checkpoint too.
 
 Method: take N examples, run each ALONE (no padding) to get ground-truth
 step-0 logits at every real (non-mask) position, then run all N together as
-one left-padded batch and compare. Comparing pre-sampling LOGITS rather than
+one padded batch and compare. Comparing pre-sampling LOGITS rather than
 generated text is deliberate -- categorical sampling draws randomness
 differently for batched vs sequential calls even with the same seed, so
 generated tokens are not expected to match token-for-token; the forward pass
@@ -26,6 +28,9 @@ Usage:
 
   python -m scripts.verify_batching --task prosqa \
       --model_path models/diffugpt-m-prosqa --data data/prosqa_test.json --n 6
+
+  python -m scripts.verify_batching --task infill \
+      --model_path models/Diffugpt --data data/rocstories_test.jsonl --n 6
 """
 import json
 import argparse
@@ -39,6 +44,8 @@ from experiments.wic.wic import wic_prompt, load_wic, append_sep_token as wic_ap
 from experiments.prosqa.prosqa_contrastive_dlig import (
     append_sep_token as prosqa_append_sep_token,
 )
+from experiments.infill.attribution_infill import infill_generate_trajectory, load_stories
+from scripts.eval_task import build_infill_batch
 
 
 def build_examples(task, data_path, n):
@@ -50,9 +57,58 @@ def build_examples(task, data_path, n):
         return [ex["question"].strip() for ex in data]
 
 
+def verify_infill(backend, tokenizer, device, data_path, n, gen_steps):
+    stories = load_stories(data_path, n)
+    print(f"[INFO] {len(stories)} stories")
+    mask_token_id = backend.mask_token_id()
+
+    # --- ALONE: run each story separately (original tuple-based API) --- #
+    alone_logits, real_lens = [], []
+    for sents in stories:
+        s1, s2, s3, s4, s5 = sents
+        left_ids = tokenizer.encode(" ".join([s1, s2]), return_tensors="pt").to(device)
+        gold_ids = tokenizer.encode(" " + s3, return_tensors="pt").to(device)
+        right_ids = tokenizer.encode(" " + " ".join([s4, s5]), return_tensors="pt").to(device)
+        gap_start, gap_end = left_ids.shape[1], left_ids.shape[1] + gold_ids.shape[1]
+        x_t = torch.cat([left_ids, torch.full_like(gold_ids, mask_token_id), right_ids], dim=1)
+        real_lens.append(x_t.shape[1])
+
+        captured = {}
+        def hook(step, xt, logits, _c=captured):
+            if step == 0:
+                _c["logits"] = logits.clone()
+        infill_generate_trajectory(backend, x_t, (gap_start, gap_end), steps=gen_steps,
+                                   record_hook=hook)
+        alone_logits.append(captured["logits"][0])
+
+    # --- BATCHED: left|span|right|trailing_pad, one call --- #
+    x, kpm, maskable, position_ids, gaps, skipped, kept = build_infill_batch(
+        tokenizer, mask_token_id, stories, device
+    )
+    if skipped:
+        print(f"[WARN] {len(skipped)} stories skipped (empty left/span/right)")
+
+    captured_batch = {}
+    def batch_hook(step, xt, logits):
+        if step == 0:
+            captured_batch["logits"] = logits.clone()
+    infill_generate_trajectory(backend, x, maskable, steps=gen_steps, record_hook=batch_hook,
+                               key_padding_mask=kpm, position_ids=position_ids)
+    batch_logits = captured_batch["logits"]
+
+    print(f"\n[RESULT] step-0 logits, batched vs alone (max abs diff per story):")
+    worst = 0.0
+    for i, real_len in enumerate(real_lens):
+        d = (batch_logits[i, :real_len] - alone_logits[i]).abs().max().item()
+        worst = max(worst, d)
+        flag = "OK" if d < 1e-2 else "MISMATCH"
+        print(f"  story {i} (real_len={real_len}): diff={d:.4e}  [{flag}]")
+    return worst
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", required=True, choices=["wic", "prosqa"])
+    ap.add_argument("--task", required=True, choices=["wic", "prosqa", "infill"])
     ap.add_argument("--model_path", required=True)
     ap.add_argument("--data", default=None)
     ap.add_argument("--n", type=int, default=6, help="Number of examples in the test batch.")
@@ -68,10 +124,11 @@ def main():
                          "changes; forces full fp32 matmul precision.")
     args = ap.parse_args()
 
-    data_path = args.data or ("data/wic_test_raw.jsonl" if args.task == "wic"
-                               else "data/prosqa_test.json")
+    defaults = {"wic": "data/wic_test_raw.jsonl", "prosqa": "data/prosqa_test.json",
+                "infill": "data/rocstories_test.jsonl"}
+    data_path = args.data or defaults[args.task]
     max_new_tokens = args.max_new_tokens or (8 if args.task == "wic" else 64)
-    append_sep = wic_append_sep_token if args.task == "wic" else prosqa_append_sep_token
+    append_sep = {"wic": wic_append_sep_token, "prosqa": prosqa_append_sep_token}.get(args.task)
 
     if args.disable_tf32:
         torch.backends.cuda.matmul.allow_tf32 = False
@@ -88,6 +145,13 @@ def main():
     backend = build_backend(model, tokenizer, family="diffugpt")
     print(f"[INFO] task={args.task}  device={device}  gen_steps={args.gen_steps}  "
           f"max_new_tokens={max_new_tokens}")
+
+    if args.task == "infill":
+        worst = verify_infill(backend, tokenizer, device, data_path, args.n, args.gen_steps)
+        print(f"\n[SUMMARY] worst-case diff: {worst:.4e}")
+        print("PASS" if worst < 1e-2 else "FAIL -- do not trust batched infill "
+              "until this is resolved.")
+        return
 
     prompts = build_examples(args.task, data_path, args.n)
     print(f"[INFO] {len(prompts)} examples")

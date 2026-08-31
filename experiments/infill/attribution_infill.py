@@ -89,10 +89,20 @@ def rouge1_f1(pred_ids, gold_ids):
 #  Records xt at each step via record_hook(step, xt, logits), exactly like
 #  TrajRecorder, so target_steps line up with generation step counts.
 # --------------------------------------------------------------------------- #
-def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook=None):
+def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook=None,
+                                key_padding_mask=None, position_ids=None):
     """
-    x_full:   [1, L_total] = [left | span | right], span already MASK-filled.
-    span_slice: (gap_start, gap_end) maskable middle region.
+    x_full:   [B, L_total]. Single-example (B=1): [left | span | right], span
+        already MASK-filled. Batched (B>1): each row laid out
+        [left(row) | span(row) | right(row) | trailing_pad(row)], left-aligned
+        (no leading padding, unlike generate_trajectory's prefix+trailing
+        layout) since infill's span position varies per row -- trailing pad
+        is the only padding needed once maskable_mask/key_padding_mask/
+        position_ids are per-row (see run_infill_batch below).
+    span_slice: EITHER a single (gap_start, gap_end) tuple, broadcast to every
+        row (the original, single-example usage -- unchanged), OR a full
+        [B, L_total] bool tensor for batched calls where each row's span sits
+        at a different position/length.
     steps:    number of diffusion steps T.
     record_hook: called each step with (step, xt_cpu, logits) for callers that
         need the trajectory (e.g. this file's own DLIG attribution loop below).
@@ -100,16 +110,22 @@ def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook=N
         entirely -- a real cost (CUDA sync + host transfer) that a bare
         generate-and-score caller (scripts/eval_task.py) doesn't need, since it
         only wants the final x0.
+    key_padding_mask/position_ids: see models/backends/diffugpt.py's
+        forward_logits. None (default) reproduces the original single-example
+        behavior exactly (every existing caller omits them); required
+        together for correct batched generation with trailing padding.
     Returns final x0.
     """
     device = next(backend.lm_head.parameters()).device
     mask_id = backend.mask_token_id()
-    gap_start, gap_end = span_slice
 
     x = x_full.to(device)
-    # maskable = ONLY the middle span; both contexts are src.
-    maskable_mask = torch.zeros_like(x, dtype=torch.bool)
-    maskable_mask[:, gap_start:gap_end] = True
+    if isinstance(span_slice, tuple):
+        gap_start, gap_end = span_slice
+        maskable_mask = torch.zeros_like(x, dtype=torch.bool)
+        maskable_mask[:, gap_start:gap_end] = True
+    else:
+        maskable_mask = span_slice.to(device=device, dtype=torch.bool)
 
     # t = T : span fully masked (already is, but enforce)
     xt = x.masked_fill(maskable_mask, mask_id)
@@ -118,7 +134,15 @@ def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook=N
         vocab = backend.wte.num_embeddings
         if (xt_in >= vocab).any() or (xt_in < 0).any():
             raise ValueError(f"token id out of range for wte (vocab={vocab})")
-        logits = backend.forward_logits(xt_in)
+        # key_padding_mask/position_ids are DiffuGPT-only kwargs (dream.py's
+        # DreamBackend.forward_logits doesn't accept them at all); only pass
+        # them through when actually needed, so Dream (--family dream) is
+        # unaffected regardless of these being None.
+        if key_padding_mask is not None or position_ids is not None:
+            logits = backend.forward_logits(xt_in, key_padding_mask=key_padding_mask,
+                                            position_ids=position_ids)
+        else:
+            logits = backend.forward_logits(xt_in)
         filt = top_p_logits(logits / backend.logits_temp, p=backend.topp_temp)
         scores = torch.log_softmax(filt, dim=-1)
         x0 = dists.Categorical(logits=scores).sample()

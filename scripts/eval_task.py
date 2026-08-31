@@ -215,10 +215,65 @@ def build_arg_parser():
                          "pass the SAME value to eval_task.py's --gen_len.")
     ap.add_argument("--out_file", default=None)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--batch_size", type=int, default=1,
+                    help="Examples generated together per call to "
+                         "generate_trajectory (left-padded; verified safe via "
+                         "scripts/verify_batching.py -- requires TF32 to stay "
+                         "disabled, see model_manager.py).")
     return ap
 
 
-def run_infill(backend, tokenizer, device, stories, gen_steps, out_file):
+def build_infill_batch(tokenizer, mask_token_id, stories, device):
+    """Encode a chunk of stories into ONE left-aligned, trailing-padded batch:
+    each row is [left | span(mask_id) | right | trailing_pad]. Unlike
+    wic/prosqa's shared prefix+trailing layout, infill's span position AND
+    length both vary per story, so padding only works as a single trailing
+    block once maskable_mask/key_padding_mask/position_ids are per-row
+    tensors (not a single shared (gap_start, gap_end)) -- see
+    infill_generate_trajectory's generalized signature.
+    Returns (x, key_padding_mask, maskable_mask, position_ids, gaps, skipped)
+    where gaps[i] = (gap_start, gap_end) for story i, and skipped is the list
+    of story indices dropped for having an empty left/span/right region."""
+    rows, skipped = [], []
+    for i, sents in enumerate(stories):
+        s1, s2, s3, s4, s5 = sents
+        left_ids = tokenizer.encode(" ".join([s1, s2]))
+        gold_ids = tokenizer.encode(" " + s3)
+        right_ids = tokenizer.encode(" " + " ".join([s4, s5]))
+        if len(gold_ids) < 1 or len(left_ids) < 1 or len(right_ids) < 1:
+            skipped.append(i)
+            continue
+        rows.append((sents, left_ids, gold_ids, right_ids))
+
+    if not rows:
+        return None
+
+    real_lens = [len(l) + len(g) + len(r) for _, l, g, r in rows]
+    Smax = max(real_lens)
+    B = len(rows)
+    pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
+
+    x = torch.full((B, Smax), pad_id, dtype=torch.long)
+    kpm = torch.zeros((B, Smax), dtype=torch.long)
+    maskable = torch.zeros((B, Smax), dtype=torch.bool)
+    gaps = []
+    for i, (_, left_ids, gold_ids, right_ids) in enumerate(rows):
+        n_left, span_len = len(left_ids), len(gold_ids)
+        gap_start, gap_end = n_left, n_left + span_len
+        real_len = real_lens[i]
+        x[i, :n_left] = torch.tensor(left_ids)
+        x[i, gap_start:gap_end] = mask_token_id
+        x[i, gap_end:real_len] = torch.tensor(right_ids)
+        kpm[i, :real_len] = 1
+        maskable[i, gap_start:gap_end] = True
+        gaps.append((gap_start, gap_end))
+
+    position_ids = (kpm.cumsum(dim=1) - 1).clamp(min=0)
+    return (x.to(device), kpm.to(device), maskable.to(device),
+            position_ids.to(device), gaps, skipped, [r[0] for r in rows])
+
+
+def run_infill(backend, tokenizer, device, stories, gen_steps, out_file, batch_size=1):
     """ROCStories middle-sentence infill on the BASE checkpoint. Mirrors
     experiments/infill/attribution_infill.py's tokenization and oracle span
     length (gold sentence's own token length), reusing its
@@ -226,49 +281,49 @@ def run_infill(backend, tokenizer, device, stories, gen_steps, out_file):
     skips the DLIG attribution machinery entirely (just generate + score),
     and scores word-level ROUGE-1/2/L F1 (see rouge_n_f1/rouge_l_f1 above)
     instead of attribution_infill.py's own token-id rouge1_f1, so both repos
-    compute the identical metric with no extra dependency."""
+    compute the identical metric with no extra dependency.
+
+    batch_size > 1: left|span|right|trailing_pad layout per row (see
+    build_infill_batch) -- generalizes the same padding-aware attention mask
+    + position ids already verified for wic/prosqa (scripts/verify_batching.py)
+    to infill's variable per-row span position/length."""
     mask_token_id = backend.mask_token_id()
     n, sum_r1, sum_r2, sum_rl = 0, 0.0, 0.0, 0.0
-    pbar = tqdm(stories, desc="[DLIG] infill", unit="story")
+    pbar = tqdm(total=len(stories), desc="[DLIG] infill", unit="story")
     with open(out_file, "w") as fout:
-        for sents in pbar:
-            s1, s2, s3, s4, s5 = sents
-
-            left_ids = tokenizer.encode(" ".join([s1, s2]), return_tensors="pt").to(device)
-            gold_ids = tokenizer.encode(" " + s3, return_tensors="pt").to(device)
-            right_ids = tokenizer.encode(" " + " ".join([s4, s5]), return_tensors="pt").to(device)
-
-            span_len = gold_ids.shape[1]
-            n_left = left_ids.shape[1]
-            if span_len < 1 or n_left < 1 or right_ids.shape[1] < 1:
+        for chunk_start in range(0, len(stories), batch_size):
+            chunk = stories[chunk_start: chunk_start + batch_size]
+            built = build_infill_batch(tokenizer, mask_token_id, chunk, device)
+            pbar.update(len(chunk))
+            if built is None:
                 continue
-
-            gap_start = n_left
-            gap_end = n_left + span_len
-            mask_block = torch.full((1, span_len), mask_token_id,
-                                    dtype=left_ids.dtype, device=device)
-            x_t = torch.cat([left_ids, mask_block, right_ids], dim=1)
+            x, kpm, maskable, position_ids, gaps, skipped, kept_sents = built
 
             with torch.no_grad():
                 final_x0 = infill_generate_trajectory(
-                    backend, x_t, (gap_start, gap_end),
-                    steps=gen_steps, record_hook=None,
+                    backend, x, maskable, steps=gen_steps, record_hook=None,
+                    key_padding_mask=kpm, position_ids=position_ids,
                 )
-            span_ids = final_x0[0, gap_start:gap_end].cpu().tolist()
-            pred = tokenizer.decode(span_ids, skip_special_tokens=True).strip()
-            gold = s3
 
-            r1 = rouge_n_f1(pred, gold, 1)
-            r2 = rouge_n_f1(pred, gold, 2)
-            rl = rouge_l_f1(pred, gold)
-            n += 1
-            sum_r1 += r1; sum_r2 += r2; sum_rl += rl
+            for i, sents in enumerate(kept_sents):
+                s1, s2, s3, s4, s5 = sents
+                gap_start, gap_end = gaps[i]
+                span_ids = final_x0[i, gap_start:gap_end].cpu().tolist()
+                pred = tokenizer.decode(span_ids, skip_special_tokens=True).strip()
+                gold = s3
 
-            fout.write(json.dumps({
-                "left": s1 + " " + s2, "right": s4 + " " + s5, "gold": gold,
-                "pred": pred, "rouge1": r1, "rouge2": r2, "rougeL": rl,
-            }) + "\n")
-            pbar.set_postfix(rouge1=f"{100*sum_r1/n:.1f}", rougeL=f"{100*sum_rl/n:.1f}")
+                r1 = rouge_n_f1(pred, gold, 1)
+                r2 = rouge_n_f1(pred, gold, 2)
+                rl = rouge_l_f1(pred, gold)
+                n += 1
+                sum_r1 += r1; sum_r2 += r2; sum_rl += rl
+
+                fout.write(json.dumps({
+                    "left": s1 + " " + s2, "right": s4 + " " + s5, "gold": gold,
+                    "pred": pred, "rouge1": r1, "rouge2": r2, "rougeL": rl,
+                }) + "\n")
+            if n:
+                pbar.set_postfix(rouge1=f"{100*sum_r1/n:.1f}", rougeL=f"{100*sum_rl/n:.1f}")
 
     print(f"\n[RESULT] task=infill  n={n}")
     print(f"  rouge1 : {100*sum_r1/n:.2f}")
@@ -302,69 +357,94 @@ def main():
     print(f"[INFO] {len(rows)} examples")
 
     if args.task == "infill":
-        run_infill(backend, tokenizer, device, rows, args.gen_steps, out_file)
+        run_infill(backend, tokenizer, device, rows, args.gen_steps, out_file,
+                  batch_size=args.batch_size)
         return
 
     n = n_correct = n_exact = n_concept = n_unreadable = 0
     per_class = {0: [0, 0], 1: [0, 0]}
     bucket_counts = {"correct": 0, "concept_only": 0, "wrong_valid": 0,
                       "concept_invalid": 0, "subj_wrong": 0}
-    pbar = tqdm(rows, desc=f"[DLIG] {args.task}", unit="ex")
+    pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
+    pbar = tqdm(total=len(rows), desc=f"[DLIG] {args.task}", unit="ex")
     with open(out_file, "w") as fout:
-        for row in pbar:
-            prompt = task["prompt_fn"](row)
-            input_ids, attention_mask, L = build_prompt_inputs(
-                tokenizer, "", prompt, device
-            )
-            input_ids, attention_mask, L = task["append_sep"](
-                tokenizer, input_ids, attention_mask, L
-            )
+        for chunk_start in range(0, len(rows), args.batch_size):
+            chunk = rows[chunk_start: chunk_start + args.batch_size]
 
-            x0 = backend.generate_trajectory(
-                input_ids, attention_mask=attention_mask,
+            # --- encode each example, then left-pad into one batch --- #
+            encs = []
+            for row in chunk:
+                prompt = task["prompt_fn"](row)
+                ids, am, L = build_prompt_inputs(tokenizer, "", prompt, device)
+                ids, am, L = task["append_sep"](tokenizer, ids, am, L)
+                encs.append((row, prompt, ids, am, L))
+            Lmax = max(e[4] for e in encs)
+
+            ids_rows, mask_rows = [], []
+            for _, _, ids, am, L in encs:
+                n_pad = Lmax - L
+                pad_ids = torch.full((1, n_pad), pad_id, dtype=ids.dtype, device=device)
+                pad_am = torch.zeros((1, n_pad), dtype=am.dtype, device=device)
+                ids_rows.append(torch.cat([pad_ids, ids], dim=1))
+                mask_rows.append(torch.cat([pad_am, am], dim=1))
+            batch_ids = torch.cat(ids_rows, dim=0)
+            batch_mask = torch.cat(mask_rows, dim=0)
+
+            # one call for the whole batch; padding-aware attention mask +
+            # position ids (models/backends/diffugpt.py) make this equivalent
+            # to generating each example alone -- verified in
+            # scripts/verify_batching.py (requires TF32 disabled).
+            x0_batch = backend.generate_trajectory(
+                batch_ids, attention_mask=batch_mask,
                 max_new_tokens=max_new_tokens, steps=args.gen_steps,
                 record_hook=None,
             )
-            gen_ids = x0[0][L:].tolist()
-            eos_id = tokenizer.eos_token_id
-            if eos_id is not None and eos_id in gen_ids:
-                gen_ids = gen_ids[:gen_ids.index(eos_id)]
-            gen_text = tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
 
-            n += 1
-            if args.task == "wic":
-                pred = read_yes_no(gen_text)
-                gold = row["label"]
-                ok = (pred is not None and pred == gold)
-                per_class[gold][1] += 1
-                if pred is None:
-                    n_unreadable += 1
+            for i, (row, prompt, ids, am, L) in enumerate(encs):
+                n_pad = Lmax - L
+                x0 = x0_batch[i: i + 1, n_pad:]
+                gen_ids = x0[0][L:].tolist()
+                eos_id = tokenizer.eos_token_id
+                if eos_id is not None and eos_id in gen_ids:
+                    gen_ids = gen_ids[:gen_ids.index(eos_id)]
+                gen_text = tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
+
+                n += 1
+                if args.task == "wic":
+                    pred = read_yes_no(gen_text)
+                    gold = row["label"]
+                    ok = (pred is not None and pred == gold)
+                    per_class[gold][1] += 1
+                    if pred is None:
+                        n_unreadable += 1
+                    else:
+                        n_correct += int(ok)
+                        per_class[gold][0] += int(ok)
+                    rec = {"prompt": prompt, "label": gold, "gen": gen_text,
+                           "pred": pred, "ok": bool(ok)}
+                    pbar.set_postfix(acc=f"{100*n_correct/n:.1f}%")
                 else:
-                    n_correct += int(ok)
-                    per_class[gold][0] += int(ok)
-                rec = {"prompt": prompt, "label": gold, "gen": gen_text,
-                       "pred": pred, "ok": bool(ok)}
-                pbar.set_postfix(acc=f"{100*n_correct/n:.1f}%")
-            else:
-                pred = parse_answer(gen_text)
-                gold = row["answer"].strip()
-                exact = normalize(pred) == normalize(gold)
-                concept = final_concept(pred) == final_concept(gold)
-                n_exact += int(exact)
-                n_concept += int(concept)
-                rec = {"question": prompt, "gold": gold, "gen": gen_text,
-                       "pred_answer": pred, "exact": exact, "concept_match": concept}
-                # bucket_prosqa.py's success metric: exact/concept_match gated
-                # by whether the model even answered about the right entity
-                # (raw concept_match alone can match on a WRONG subject).
-                bucket = prosqa_label_row(rec, n)["bucket"]
-                bucket_counts[bucket] += 1
-                rec["bucket"] = bucket
-                success = bucket_counts["correct"] + bucket_counts["concept_only"]
-                pbar.set_postfix(exact=f"{100*n_exact/n:.1f}%",
-                                 success=f"{100*success/n:.1f}%")
+                    pred = parse_answer(gen_text)
+                    gold = row["answer"].strip()
+                    exact = normalize(pred) == normalize(gold)
+                    concept = final_concept(pred) == final_concept(gold)
+                    n_exact += int(exact)
+                    n_concept += int(concept)
+                    rec = {"question": prompt, "gold": gold, "gen": gen_text,
+                           "pred_answer": pred, "exact": exact, "concept_match": concept}
+                    # bucket_prosqa.py's success metric: exact/concept_match gated
+                    # by whether the model even answered about the right entity
+                    # (raw concept_match alone can match on a WRONG subject).
+                    bucket = prosqa_label_row(rec, n)["bucket"]
+                    bucket_counts[bucket] += 1
+                    rec["bucket"] = bucket
+                    success = bucket_counts["correct"] + bucket_counts["concept_only"]
+                    pbar.set_postfix(exact=f"{100*n_exact/n:.1f}%",
+                                     success=f"{100*success/n:.1f}%")
 
-            fout.write(json.dumps(rec) + "\n")
+                fout.write(json.dumps(rec) + "\n")
+                pbar.update(1)
+    pbar.close()
 
     print(f"\n[RESULT] task={args.task}  n={n}")
     if args.task == "wic":
