@@ -1,0 +1,1309 @@
+
+[BIDIR] row0 forward-attention mass = 0.924  (causal=0)
+        -> PASS (bidirectional)
+[INFO] Generating trajectory ONCE for the whole grid...
+[INFO] recorded steps: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+[SHIFT] declared predicts_shifted=True  argmax-match on committed tokens = 0.789
+        (high => alignment consistent; very low => wrong shift for this ckpt)
+
+==============================================================================
+STEP t=1   layer=0
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.846880        0.888486    4.161e-02    4.683e-02
+     1000        0.881422        0.888486    7.064e-03    7.950e-03
+    -> completeness at max m: PASS (abs_err=7.064e-03 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 4.683e-02 -> 7.950e-03)
+
+==============================================================================
+STEP t=1   layer=2
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.877755        0.888486    1.073e-02    1.208e-02
+     1000        0.886465        0.888486    2.021e-03    2.275e-03
+    -> completeness at max m: PASS (abs_err=2.021e-03 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 1.208e-02 -> 2.275e-03)
+
+==============================================================================
+STEP t=1   layer=4
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.883509        0.888486    4.977e-03    5.602e-03
+     1000        0.887499        0.888486    9.866e-04    1.110e-03
+    -> completeness at max m: PASS (abs_err=9.866e-04 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 5.602e-03 -> 1.110e-03)
+
+==============================================================================
+STEP t=1   layer=6
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.880620        0.888486    7.866e-03    8.853e-03
+     1000        0.886936        0.888486    1.549e-03    1.744e-03
+    -> completeness at max m: PASS (abs_err=1.549e-03 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 8.853e-03 -> 1.744e-03)
+
+==============================================================================
+STEP t=1   layer=8
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.883788        0.888486    4.698e-03    5.288e-03
+     1000        0.887546        0.888486    9.400e-04    1.058e-03
+    -> completeness at max m: PASS (abs_err=9.400e-04 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 5.288e-03 -> 1.058e-03)
+
+==============================================================================
+STEP t=1   layer=10
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.884413        0.888486    4.073e-03    4.584e-03
+     1000        0.887684        0.888486    8.023e-04    9.030e-04
+    -> completeness at max m: PASS (abs_err=8.023e-04 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 4.584e-03 -> 9.030e-04)
+
+==============================================================================
+STEP t=1   layer=12
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.889809        0.888486    1.323e-03    1.489e-03
+     1000        0.888756        0.888486    2.700e-04    3.039e-04
+    -> completeness at max m: PASS (abs_err=2.700e-04 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 1.489e-03 -> 3.039e-04)
+
+==============================================================================
+STEP t=1   layer=14
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.887554        0.888486    9.315e-04    1.048e-03
+     1000        0.888317        0.888486    1.694e-04    1.907e-04
+    -> completeness at max m: PASS (abs_err=1.694e-04 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 1.048e-03 -> 1.907e-04)
+
+==============================================================================
+STEP t=1   layer=16
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.886832        0.888486    1.654e-03    1.862e-03
+     1000        0.888190        0.888486    2.955e-04    3.326e-04
+    -> completeness at max m: PASS (abs_err=2.955e-04 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 1.862e-03 -> 3.326e-04)
+
+==============================================================================
+STEP t=1   layer=18
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.891214        0.888486    2.728e-03    3.070e-03
+     1000        0.889050        0.888486    5.636e-04    6.344e-04
+    -> completeness at max m: PASS (abs_err=5.636e-04 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 3.070e-03 -> 6.344e-04)
+
+==============================================================================
+STEP t=1   layer=20
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.894098        0.888486    5.612e-03    6.317e-03
+     1000        0.889612        0.888486    1.126e-03    1.268e-03
+    -> completeness at max m: PASS (abs_err=1.126e-03 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 6.317e-03 -> 1.268e-03)
+
+==============================================================================
+STEP t=1   layer=22
+==============================================================================
+unmasked generated tokens: 6 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=11.397347  intervene=11.397347  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=10.508862  intervene=10.508862  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.888486
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.888606        0.888486    1.197e-04    1.347e-04
+     1000        0.888533        0.888486    4.721e-05    5.313e-05
+    -> completeness at max m: PASS (abs_err=4.721e-05 vs atol+rtol*|dF|=1.388e-02)
+    -> convergence in m: PASS (rel_err 1.347e-04 -> 5.313e-05)
+
+==============================================================================
+STEP t=3   layer=0
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.259341       -0.240718    1.862e-02    7.737e-02
+     1000       -0.242492       -0.240718    1.774e-03    7.372e-03
+    -> completeness at max m: PASS (abs_err=1.774e-03 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 7.737e-02 -> 7.372e-03)
+
+==============================================================================
+STEP t=3   layer=2
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.235929       -0.240718    4.789e-03    1.989e-02
+     1000       -0.239723       -0.240718    9.951e-04    4.134e-03
+    -> completeness at max m: PASS (abs_err=9.951e-04 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 1.989e-02 -> 4.134e-03)
+
+==============================================================================
+STEP t=3   layer=4
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.238514       -0.240718    2.204e-03    9.156e-03
+     1000       -0.240264       -0.240718    4.543e-04    1.887e-03
+    -> completeness at max m: PASS (abs_err=4.543e-04 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 9.156e-03 -> 1.887e-03)
+
+==============================================================================
+STEP t=3   layer=6
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.244566       -0.240718    3.849e-03    1.599e-02
+     1000       -0.241472       -0.240718    7.546e-04    3.135e-03
+    -> completeness at max m: PASS (abs_err=7.546e-04 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 1.599e-02 -> 3.135e-03)
+
+==============================================================================
+STEP t=3   layer=8
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.244521       -0.240718    3.804e-03    1.580e-02
+     1000       -0.241471       -0.240718    7.535e-04    3.130e-03
+    -> completeness at max m: PASS (abs_err=7.535e-04 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 1.580e-02 -> 3.130e-03)
+
+==============================================================================
+STEP t=3   layer=10
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.240435       -0.240718    2.826e-04    1.174e-03
+     1000       -0.240653       -0.240718    6.476e-05    2.690e-04
+    -> completeness at max m: PASS (abs_err=6.476e-05 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 1.174e-03 -> 2.690e-04)
+
+==============================================================================
+STEP t=3   layer=12
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.239715       -0.240718    1.003e-03    4.166e-03
+     1000       -0.240510       -0.240718    2.080e-04    8.642e-04
+    -> completeness at max m: PASS (abs_err=2.080e-04 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 4.166e-03 -> 8.642e-04)
+
+==============================================================================
+STEP t=3   layer=14
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.239948       -0.240718    7.696e-04    3.197e-03
+     1000       -0.240563       -0.240718    1.549e-04    6.436e-04
+    -> completeness at max m: PASS (abs_err=1.549e-04 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 3.197e-03 -> 6.436e-04)
+
+==============================================================================
+STEP t=3   layer=16
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.238590       -0.240718    2.128e-03    8.841e-03
+     1000       -0.240296       -0.240718    4.217e-04    1.752e-03
+    -> completeness at max m: PASS (abs_err=4.217e-04 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 8.841e-03 -> 1.752e-03)
+
+==============================================================================
+STEP t=3   layer=18
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.239414       -0.240718    1.304e-03    5.417e-03
+     1000       -0.240458       -0.240718    2.599e-04    1.080e-03
+    -> completeness at max m: PASS (abs_err=2.599e-04 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 5.417e-03 -> 1.080e-03)
+
+==============================================================================
+STEP t=3   layer=20
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.236918       -0.240718    3.800e-03    1.579e-02
+     1000       -0.239955       -0.240718    7.633e-04    3.171e-03
+    -> completeness at max m: PASS (abs_err=7.633e-04 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 1.579e-02 -> 3.171e-03)
+
+==============================================================================
+STEP t=3   layer=22
+==============================================================================
+unmasked generated tokens: 14 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.152952  intervene=13.152952  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=13.393670  intervene=13.393670  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.240718
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.241540       -0.240718    8.216e-04    3.413e-03
+     1000       -0.240875       -0.240718    1.575e-04    6.543e-04
+    -> completeness at max m: PASS (abs_err=1.575e-04 vs atol+rtol*|dF|=7.407e-03)
+    -> convergence in m: PASS (rel_err 3.413e-03 -> 6.543e-04)
+
+==============================================================================
+STEP t=5   layer=0
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.559152       -0.557559    1.593e-03    2.858e-03
+     1000       -0.558183       -0.557559    6.242e-04    1.119e-03
+    -> completeness at max m: PASS (abs_err=6.242e-04 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 2.858e-03 -> 1.119e-03)
+
+==============================================================================
+STEP t=5   layer=2
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.556990       -0.557559    5.692e-04    1.021e-03
+     1000       -0.557554       -0.557559    5.066e-06    9.087e-06
+    -> completeness at max m: PASS (abs_err=5.066e-06 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 1.021e-03 -> 9.087e-06)
+
+==============================================================================
+STEP t=5   layer=4
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.555080       -0.557559    2.479e-03    4.446e-03
+     1000       -0.557129       -0.557559    4.303e-04    7.718e-04
+    -> completeness at max m: PASS (abs_err=4.303e-04 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 4.446e-03 -> 7.718e-04)
+
+==============================================================================
+STEP t=5   layer=6
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.558939       -0.557559    1.380e-03    2.476e-03
+     1000       -0.557898       -0.557559    3.390e-04    6.080e-04
+    -> completeness at max m: PASS (abs_err=3.390e-04 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 2.476e-03 -> 6.080e-04)
+
+==============================================================================
+STEP t=5   layer=8
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.556761       -0.557559    7.981e-04    1.431e-03
+     1000       -0.557458       -0.557559    1.010e-04    1.811e-04
+    -> completeness at max m: PASS (abs_err=1.010e-04 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 1.431e-03 -> 1.811e-04)
+
+==============================================================================
+STEP t=5   layer=10
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.558739       -0.557559    1.180e-03    2.117e-03
+     1000       -0.557856       -0.557559    2.966e-04    5.319e-04
+    -> completeness at max m: PASS (abs_err=2.966e-04 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 2.117e-03 -> 5.319e-04)
+
+==============================================================================
+STEP t=5   layer=12
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.557446       -0.557559    1.125e-04    2.018e-04
+     1000       -0.557595       -0.557559    3.600e-05    6.457e-05
+    -> completeness at max m: PASS (abs_err=3.600e-05 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 2.018e-04 -> 6.457e-05)
+
+==============================================================================
+STEP t=5   layer=14
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.556782       -0.557559    7.775e-04    1.394e-03
+     1000       -0.557461       -0.557559    9.787e-05    1.755e-04
+    -> completeness at max m: PASS (abs_err=9.787e-05 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 1.394e-03 -> 1.755e-04)
+
+==============================================================================
+STEP t=5   layer=16
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.556160       -0.557559    1.399e-03    2.509e-03
+     1000       -0.557336       -0.557559    2.233e-04    4.006e-04
+    -> completeness at max m: PASS (abs_err=2.233e-04 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 2.509e-03 -> 4.006e-04)
+
+==============================================================================
+STEP t=5   layer=18
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.557402       -0.557559    1.575e-04    2.824e-04
+     1000       -0.557583       -0.557559    2.402e-05    4.308e-05
+    -> completeness at max m: PASS (abs_err=2.402e-05 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 2.824e-04 -> 4.308e-05)
+
+==============================================================================
+STEP t=5   layer=20
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.556807       -0.557559    7.523e-04    1.349e-03
+     1000       -0.557465       -0.557559    9.418e-05    1.689e-04
+    -> completeness at max m: PASS (abs_err=9.418e-05 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 1.349e-03 -> 1.689e-04)
+
+==============================================================================
+STEP t=5   layer=22
+==============================================================================
+unmasked generated tokens: 24 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=13.501449  intervene=13.501449  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.059008  intervene=14.059008  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.557559
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.559105       -0.557559    1.546e-03    2.773e-03
+     1000       -0.557925       -0.557559    3.657e-04    6.560e-04
+    -> completeness at max m: PASS (abs_err=3.657e-04 vs atol+rtol*|dF|=1.058e-02)
+    -> convergence in m: PASS (rel_err 2.773e-03 -> 6.560e-04)
+
+==============================================================================
+STEP t=7   layer=0
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.301370        0.302966    1.596e-03    5.267e-03
+     1000        0.302605        0.302966    3.607e-04    1.190e-03
+    -> completeness at max m: PASS (abs_err=3.607e-04 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 5.267e-03 -> 1.190e-03)
+
+==============================================================================
+STEP t=7   layer=2
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.297476        0.302966    5.490e-03    1.812e-02
+     1000        0.301893        0.302966    1.073e-03    3.543e-03
+    -> completeness at max m: PASS (abs_err=1.073e-03 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 1.812e-02 -> 3.543e-03)
+
+==============================================================================
+STEP t=7   layer=4
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.306134        0.302966    3.168e-03    1.046e-02
+     1000        0.303667        0.302966    7.014e-04    2.315e-03
+    -> completeness at max m: PASS (abs_err=7.014e-04 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 1.046e-02 -> 2.315e-03)
+
+==============================================================================
+STEP t=7   layer=6
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.298467        0.302966    4.499e-03    1.485e-02
+     1000        0.302133        0.302966    8.332e-04    2.750e-03
+    -> completeness at max m: PASS (abs_err=8.332e-04 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 1.485e-02 -> 2.750e-03)
+
+==============================================================================
+STEP t=7   layer=8
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.303759        0.302966    7.928e-04    2.617e-03
+     1000        0.303192        0.302966    2.257e-04    7.450e-04
+    -> completeness at max m: PASS (abs_err=2.257e-04 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 2.617e-03 -> 7.450e-04)
+
+==============================================================================
+STEP t=7   layer=10
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.301329        0.302966    1.637e-03    5.403e-03
+     1000        0.302704        0.302966    2.618e-04    8.641e-04
+    -> completeness at max m: PASS (abs_err=2.618e-04 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 5.403e-03 -> 8.641e-04)
+
+==============================================================================
+STEP t=7   layer=12
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.303956        0.302966    9.897e-04    3.267e-03
+     1000        0.303234        0.302966    2.681e-04    8.850e-04
+    -> completeness at max m: PASS (abs_err=2.681e-04 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 3.267e-03 -> 8.850e-04)
+
+==============================================================================
+STEP t=7   layer=14
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.303722        0.302966    7.558e-04    2.495e-03
+     1000        0.303192        0.302966    2.261e-04    7.462e-04
+    -> completeness at max m: PASS (abs_err=2.261e-04 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 2.495e-03 -> 7.462e-04)
+
+==============================================================================
+STEP t=7   layer=16
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.304311        0.302966    1.345e-03    4.438e-03
+     1000        0.303312        0.302966    3.459e-04    1.142e-03
+    -> completeness at max m: PASS (abs_err=3.459e-04 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 4.438e-03 -> 1.142e-03)
+
+==============================================================================
+STEP t=7   layer=18
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.304212        0.302966    1.246e-03    4.112e-03
+     1000        0.303288        0.302966    3.223e-04    1.064e-03
+    -> completeness at max m: PASS (abs_err=3.223e-04 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 4.112e-03 -> 1.064e-03)
+
+==============================================================================
+STEP t=7   layer=20
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.302851        0.302966    1.155e-04    3.811e-04
+     1000        0.303015        0.302966    4.855e-05    1.602e-04
+    -> completeness at max m: PASS (abs_err=4.855e-05 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 3.811e-04 -> 1.602e-04)
+
+==============================================================================
+STEP t=7   layer=22
+==============================================================================
+unmasked generated tokens: 33 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=14.348230  intervene=14.348230  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=14.045264  intervene=14.045264  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = 0.302966
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200        0.300344        0.302966    2.622e-03    8.654e-03
+     1000        0.302514        0.302966    4.517e-04    1.491e-03
+    -> completeness at max m: PASS (abs_err=4.517e-04 vs atol+rtol*|dF|=8.030e-03)
+    -> convergence in m: PASS (rel_err 8.654e-03 -> 1.491e-03)
+
+==============================================================================
+STEP t=9   layer=0
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.643933       -0.642494    1.439e-03    2.240e-03
+     1000       -0.643262       -0.642494    7.677e-04    1.195e-03
+    -> completeness at max m: PASS (abs_err=7.677e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 2.240e-03 -> 1.195e-03)
+
+==============================================================================
+STEP t=9   layer=2
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.645151       -0.642494    2.657e-03    4.136e-03
+     1000       -0.642930       -0.642494    4.359e-04    6.785e-04
+    -> completeness at max m: PASS (abs_err=4.359e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 4.136e-03 -> 6.785e-04)
+
+==============================================================================
+STEP t=9   layer=4
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.640879       -0.642494    1.615e-03    2.514e-03
+     1000       -0.642055       -0.642494    4.390e-04    6.833e-04
+    -> completeness at max m: PASS (abs_err=4.390e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 2.514e-03 -> 6.833e-04)
+
+==============================================================================
+STEP t=9   layer=6
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.643609       -0.642494    1.115e-03    1.736e-03
+     1000       -0.642600       -0.642494    1.062e-04    1.653e-04
+    -> completeness at max m: PASS (abs_err=1.062e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 1.736e-03 -> 1.653e-04)
+
+==============================================================================
+STEP t=9   layer=8
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.641350       -0.642494    1.145e-03    1.782e-03
+     1000       -0.642149       -0.642494    3.451e-04    5.370e-04
+    -> completeness at max m: PASS (abs_err=3.451e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 1.782e-03 -> 5.370e-04)
+
+==============================================================================
+STEP t=9   layer=10
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.641190       -0.642494    1.304e-03    2.029e-03
+     1000       -0.642117       -0.642494    3.773e-04    5.872e-04
+    -> completeness at max m: PASS (abs_err=3.773e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 2.029e-03 -> 5.872e-04)
+
+==============================================================================
+STEP t=9   layer=12
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.640834       -0.642494    1.660e-03    2.584e-03
+     1000       -0.642044       -0.642494    4.505e-04    7.012e-04
+    -> completeness at max m: PASS (abs_err=4.505e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 2.584e-03 -> 7.012e-04)
+
+==============================================================================
+STEP t=9   layer=14
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.639632       -0.642494    2.862e-03    4.455e-03
+     1000       -0.641793       -0.642494    7.012e-04    1.091e-03
+    -> completeness at max m: PASS (abs_err=7.012e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 4.455e-03 -> 1.091e-03)
+
+==============================================================================
+STEP t=9   layer=16
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.639735       -0.642494    2.759e-03    4.295e-03
+     1000       -0.641811       -0.642494    6.834e-04    1.064e-03
+    -> completeness at max m: PASS (abs_err=6.834e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 4.295e-03 -> 1.064e-03)
+
+==============================================================================
+STEP t=9   layer=18
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.641113       -0.642494    1.381e-03    2.150e-03
+     1000       -0.642094       -0.642494    4.004e-04    6.232e-04
+    -> completeness at max m: PASS (abs_err=4.004e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 2.150e-03 -> 6.232e-04)
+
+==============================================================================
+STEP t=9   layer=20
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.642331       -0.642494    1.630e-04    2.536e-04
+     1000       -0.642342       -0.642494    1.525e-04    2.373e-04
+    -> completeness at max m: PASS (abs_err=1.525e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 2.536e-04 -> 2.373e-04)
+
+==============================================================================
+STEP t=9   layer=22
+==============================================================================
+unmasked generated tokens: 49 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.325264  intervene=17.325264  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.967758  intervene=17.967758  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.642494
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.644470       -0.642494    1.976e-03    3.075e-03
+     1000       -0.642769       -0.642494    2.746e-04    4.274e-04
+    -> completeness at max m: PASS (abs_err=2.746e-04 vs atol+rtol*|dF|=1.142e-02)
+    -> convergence in m: PASS (rel_err 3.075e-03 -> 4.274e-04)
+
+==============================================================================
+STEP t=11   layer=0
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.282220       -0.275915    6.305e-03    2.285e-02
+     1000       -0.277144       -0.275915    1.229e-03    4.455e-03
+    -> completeness at max m: PASS (abs_err=1.229e-03 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 2.285e-02 -> 4.455e-03)
+
+==============================================================================
+STEP t=11   layer=2
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.272808       -0.275915    3.107e-03    1.126e-02
+     1000       -0.275332       -0.275915    5.829e-04    2.113e-03
+    -> completeness at max m: PASS (abs_err=5.829e-04 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 1.126e-02 -> 2.113e-03)
+
+==============================================================================
+STEP t=11   layer=4
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.272782       -0.275915    3.133e-03    1.136e-02
+     1000       -0.275301       -0.275915    6.139e-04    2.225e-03
+    -> completeness at max m: PASS (abs_err=6.139e-04 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 1.136e-02 -> 2.225e-03)
+
+==============================================================================
+STEP t=11   layer=6
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.274966       -0.275915    9.493e-04    3.441e-03
+     1000       -0.275738       -0.275915    1.772e-04    6.422e-04
+    -> completeness at max m: PASS (abs_err=1.772e-04 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 3.441e-03 -> 6.422e-04)
+
+==============================================================================
+STEP t=11   layer=8
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.275104       -0.275915    8.115e-04    2.941e-03
+     1000       -0.275767       -0.275915    1.483e-04    5.375e-04
+    -> completeness at max m: PASS (abs_err=1.483e-04 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 2.941e-03 -> 5.375e-04)
+
+==============================================================================
+STEP t=11   layer=10
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.276778       -0.275915    8.630e-04    3.128e-03
+     1000       -0.276100       -0.275915    1.847e-04    6.694e-04
+    -> completeness at max m: PASS (abs_err=1.847e-04 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 3.128e-03 -> 6.694e-04)
+
+==============================================================================
+STEP t=11   layer=12
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.276807       -0.275915    8.916e-04    3.232e-03
+     1000       -0.276104       -0.275915    1.886e-04    6.835e-04
+    -> completeness at max m: PASS (abs_err=1.886e-04 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 3.232e-03 -> 6.835e-04)
+
+==============================================================================
+STEP t=11   layer=14
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.275623       -0.275915    2.924e-04    1.060e-03
+     1000       -0.275860       -0.275915    5.502e-05    1.994e-04
+    -> completeness at max m: PASS (abs_err=5.502e-05 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 1.060e-03 -> 1.994e-04)
+
+==============================================================================
+STEP t=11   layer=16
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.275717       -0.275915    1.980e-04    7.177e-04
+     1000       -0.275876       -0.275915    3.883e-05    1.407e-04
+    -> completeness at max m: PASS (abs_err=3.883e-05 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 7.177e-04 -> 1.407e-04)
+
+==============================================================================
+STEP t=11   layer=18
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.275815       -0.275915    9.996e-05    3.623e-04
+     1000       -0.275901       -0.275915    1.365e-05    4.947e-05
+    -> completeness at max m: PASS (abs_err=1.365e-05 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 3.623e-04 -> 4.947e-05)
+
+==============================================================================
+STEP t=11   layer=20
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.276554       -0.275915    6.393e-04    2.317e-03
+     1000       -0.276055       -0.275915    1.397e-04    5.063e-04
+    -> completeness at max m: PASS (abs_err=1.397e-04 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 2.317e-03 -> 5.063e-04)
+
+==============================================================================
+STEP t=11   layer=22
+==============================================================================
+unmasked generated tokens: 58 / 64
+
+[A] hook transparency  (intervention endpoints == plain forward)
+    F_t(X_t,C):  plain=17.543573  intervene=17.543573  rel_diff=0.00e+00
+    F_t(X_t,/0): plain=17.819489  intervene=17.819489  rel_diff=0.00e+00
+    deltaF = F(C) - F(/0) = -0.275915
+    -> PASS
+
+[B/C] completeness:  sum_{i,j} DLIG (ALL positions)  vs  deltaF
+        m         sumDLIG          deltaF      abs_err      rel_err
+      200       -0.279065       -0.275915    3.149e-03    1.141e-02
+     1000       -0.276554       -0.275915    6.393e-04    2.317e-03
+    -> completeness at max m: PASS (abs_err=6.393e-04 vs atol+rtol*|dF|=7.759e-03)
+    -> convergence in m: PASS (rel_err 1.141e-02 -> 2.317e-03)
+
+##############################################################################
+VERDICT
+##############################################################################
+all 72 cells: PASS
