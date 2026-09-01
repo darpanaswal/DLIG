@@ -33,9 +33,9 @@ CONV_LAYER="6"
 CONV_STEPS=(7)
 CONV_M_LIST=(50 100 200 500 1000)            # rel_err must shrink monotonically
 
-# --- Phase 2: full grid (analyzed config) ---
+# --- Phase 2: full grid (analyzed config, T=64 full-scale) ---
 GRID_LAYERS=(0 2 4 6 8 10 12 14 16 18 20 22)
-GRID_STEPS=(1 3 5 7 9 11)
+GRID_STEPS=(1 3 5 7 9 11 13 15 17 19 21 23 25 27 29 31 33 35 37 39 41 43 45 47 49 51 53 55 57 59 61 63)
 GRID_M_LIST=(200 1000)                        # per-cell convergence + smaller abs err at max m
 ########################################
 

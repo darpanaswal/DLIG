@@ -1,0 +1,45 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Full statistical results for the word-sense discrimination analyses on WiC (§~\ref{sec:wic}). $n{=}500$ test examples, all with a parseable prediction ($394$ predicted-Yes, $106$ predicted-No). AUC compares predicted-Yes vs.\ predicted-No (chance $0.5$). $T{=}64$ denoising steps, 32 target steps ($1,3,5,\dots,63$). Significance: $^{*}p{<}0.05$, $^{**}p{<}0.01$, $^{***}p{<}0.001$.}
+\label{tab:wic-stats}
+\begin{tabularx}{\linewidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.30\linewidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedleft\arraybackslash}p{0.20\linewidth}
+    @{}
+}
+\toprule
+\textit{Analysis} & \textit{Statistic} & \textit{Value} \\
+\midrule
+\multirow[t]{3}{=}{Overall task accuracy}
+& Overall accuracy ($n{=}500$)
+& $63.6\%$ \\
+& Same-sense (Yes) accuracy ($n{=}250$)
+& $90.8\%$ \\
+& Different-sense (No) accuracy ($n{=}250$)
+& $36.4\%$ \\
+\midrule
+\multirow[t]{4}{=}{Behavioral divergence: predicted-Yes vs.\ predicted-No}
+& Attribution depth (centroid): mean pred-Yes / pred-No
+& $7.017$ / $7.014$ \\
+& Attribution depth: AUC / $p$
+& $0.503$ / $0.916$\ \ (n.s.) \\
+& Commitment timing: mean pred-Yes / pred-No
+& $0.073$ / $0.271$ \\
+& Commitment timing: AUC / $p$
+& $0.342$ / $<10^{-4}\;^{***}$ \\
+\midrule
+\multirow[t]{4}{=}{Hidden structure within predicted-Yes (unsupervised)}
+& Attribution depth: BIC 1-comp / 2-comp ($n{=}394$)
+& $499.4$ / $512.1$ \\
+& Attribution depth: modes ($w$)
+& $6.914\,(0.66)$ / $7.215\,(0.34)$ \\
+& Commitment timing: BIC 1-comp / 2-comp ($n{=}394$)
+& $-75.2$ / $-57.3$ \\
+& Commitment timing: modes ($w$)
+& $0.073\,(0.50)$ / $0.073\,(0.50)$ \\
+\bottomrule
+\end{tabularx}
+\end{table}

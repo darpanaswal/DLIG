@@ -1,0 +1,28 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Mean total context attribution mass per denoising step (self-generated target, DiffuGPT-M, $n{\le}1000$ ROCStories cases). $n$ is the number of stories with at least one scoreable committed span token at that step (self mode's degenerate-step guard excludes stories where the span is still fully masked); it only reaches the full $1000$ from $t{=}39$ onward. Steps $t{<}39$ are therefore computed over a shrinking, non-representative subset (whichever stories happened to commit unusually early) and should not be read as evidence of high early-step reliance -- only the $n{=}1000$ region ($t{\geq}39$) is a clean, unconfounded comparison across steps.}
+\label{tab:infill-stepwise-mass}
+\begin{tabular}{@{}rrr|rrr@{}}
+\toprule
+$t$ & $n$ & mean mass & $t$ & $n$ & mean mass \\
+\midrule
+1  & 124 & 101.96 & 33 & 995  & 60.93 \\
+3  & 361 & 99.76  & 35 & 995  & 60.11 \\
+5  & 506 & 96.04  & 37 & 998  & 59.67 \\
+7  & 622 & 91.08  & 39 & 1000 & 59.36 \\
+9  & 719 & 87.21  & 41 & 1000 & 59.00 \\
+11 & 792 & 83.71  & 43 & 1000 & 58.96 \\
+13 & 845 & 81.09  & 45 & 1000 & 58.86 \\
+15 & 880 & 76.95  & 47 & 1000 & 59.00 \\
+17 & 914 & 74.68  & 49 & 1000 & 59.06 \\
+19 & 932 & 72.48  & 51 & 1000 & 59.24 \\
+21 & 949 & 69.72  & 53 & 1000 & 59.80 \\
+23 & 963 & 67.89  & 55 & 1000 & 60.66 \\
+25 & 970 & 65.92  & 57 & 1000 & 61.40 \\
+27 & 976 & 64.37  & 59 & 1000 & 61.95 \\
+29 & 983 & 62.87  & 61 & 1000 & 62.93 \\
+31 & 990 & 61.85  & 63 & 1000 & 63.85 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# scripts/eval_task.py
+# helpers/eval_task.py
 """
 eval_task.py — unified DLIG-side evaluation for WiC / ProsQA / infill on
 DiffuGPT-M, for direct comparison against diffugpt/scripts/eval_task.py (the
@@ -42,13 +42,13 @@ extra dependency).
 
 Usage (defaults already match diffugpt/scripts/eval_task.py's defaults, so
 no override needed for a matched run):
-  python -m scripts.eval_task --task wic \
+  python -m helpers.eval_task --task wic \
       --model_path models/diffugpt-m-wic --data data/wic_test_raw.jsonl
 
-  python -m scripts.eval_task --task prosqa \
+  python -m helpers.eval_task --task prosqa \
       --model_path models/diffugpt-m-prosqa --data data/prosqa_test.json
 
-  python -m scripts.eval_task --task infill \
+  python -m helpers.eval_task --task infill \
       --model_path models/Diffugpt --data data/rocstories_test.jsonl
 
 If you deliberately want to compare at a DIFFERENT step count, pass the SAME
@@ -218,7 +218,7 @@ def build_arg_parser():
     ap.add_argument("--batch_size", type=int, default=1,
                     help="Examples generated together per call to "
                          "generate_trajectory (left-padded; verified safe via "
-                         "scripts/verify_batching.py -- requires TF32 to stay "
+                         "helpers/verify_batching.py -- requires TF32 to stay "
                          "disabled, see model_manager.py).")
     return ap
 
@@ -285,7 +285,7 @@ def run_infill(backend, tokenizer, device, stories, gen_steps, out_file, batch_s
 
     batch_size > 1: left|span|right|trailing_pad layout per row (see
     build_infill_batch) -- generalizes the same padding-aware attention mask
-    + position ids already verified for wic/prosqa (scripts/verify_batching.py)
+    + position ids already verified for wic/prosqa (helpers/verify_batching.py)
     to infill's variable per-row span position/length."""
     mask_token_id = backend.mask_token_id()
     n, sum_r1, sum_r2, sum_rl = 0, 0.0, 0.0, 0.0
@@ -337,7 +337,10 @@ def main():
     task = TASKS[args.task]
     data_path = args.data or task["default_data"]
     max_new_tokens = args.max_new_tokens or task["default_max_new_tokens"]
-    out_file = args.out_file or f"outputs/{args.task}/eval_task_preds.jsonl"
+    # infill's other outputs all live under outputs/infill_attribution/
+    # (attribution_infill.py's own convention), not outputs/infill/
+    default_out_dir = "outputs/infill_attribution" if args.task == "infill" else f"outputs/{args.task}"
+    out_file = args.out_file or f"{default_out_dir}/eval_task_preds.jsonl"
     os.makedirs(os.path.dirname(out_file) or ".", exist_ok=True)
 
     set_seed(args.seed)
@@ -393,7 +396,7 @@ def main():
             # one call for the whole batch; padding-aware attention mask +
             # position ids (models/backends/diffugpt.py) make this equivalent
             # to generating each example alone -- verified in
-            # scripts/verify_batching.py (requires TF32 disabled).
+            # helpers/verify_batching.py (requires TF32 disabled).
             x0_batch = backend.generate_trajectory(
                 batch_ids, attention_mask=batch_mask,
                 max_new_tokens=max_new_tokens, steps=args.gen_steps,

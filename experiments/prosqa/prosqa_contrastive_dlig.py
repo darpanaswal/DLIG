@@ -137,7 +137,7 @@ def build_arg_parser():
                         "generate_trajectory (left-padded; the backend's "
                         "padding-aware attention mask + position ids make "
                         "this equivalent to generating each alone -- verified "
-                        "in scripts/verify_batching.py). DLIG attribution "
+                        "in helpers/verify_batching.py). DLIG attribution "
                         "itself stays per-example; only generation is "
                         "batched. 1 = original unbatched behavior.")
 
@@ -283,7 +283,7 @@ def main():
         # --- left-pad into one batch, generate the WHOLE BATCH's trajectory
         # in one call. The backend's padding-aware attention mask + position
         # ids make this equivalent to generating each example alone --
-        # verified in scripts/verify_batching.py. ---
+        # verified in helpers/verify_batching.py. ---
         Lmax = max(p["L"] for p in prepped)
         ids_rows, mask_rows = [], []
         for p in prepped:

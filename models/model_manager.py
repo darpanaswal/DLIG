@@ -10,7 +10,7 @@ from transformers import AutoModel, AutoTokenizer
 
 # NOTE: TF32 (torch.backends.cuda.matmul.allow_tf32) was tried here as a
 # "free" Ampere+ speedup but reverted -- verified on a real checkpoint
-# (scripts/verify_batching.py) that it corrupts batched generation by up to
+# (helpers/verify_batching.py) that it corrupts batched generation by up to
 # ~0.8 in logit space relative to single-example generation (24-layer GPT-2
 # accumulates TF32's reduced mantissa precision into much more than the
 # claimed "negligible" impact). With TF32 off, batched vs single-example

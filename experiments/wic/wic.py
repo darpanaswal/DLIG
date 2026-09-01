@@ -129,7 +129,7 @@ def build_arg_parser():
                         "generate_trajectory (left-padded; the backend's "
                         "padding-aware attention mask + position ids make "
                         "this equivalent to generating each alone -- verified "
-                        "in scripts/verify_batching.py). DLIG attribution "
+                        "in helpers/verify_batching.py). DLIG attribution "
                         "itself stays per-example; only generation is "
                         "batched. 1 = original unbatched behavior.")
 

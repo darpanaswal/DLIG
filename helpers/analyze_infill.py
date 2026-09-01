@@ -276,6 +276,88 @@ def plot_infill(by_step, output_file, cmap_name="Purples",
           f"{rows}x{cols}) -> {output_file}")
 
 
+def plot_infill_heatmap(by_step, output_file, cmap_name="Purples",
+                        max_abs_dist=None, bin_width=2, min_count=5):
+    """Single-panel alternative to plot_infill's small-multiples grid: one
+    landscape heatmap, x = denoising step (time reads left-to-right, as in
+    Figure 5a's per-step line plot), y = signed distance from span (binned,
+    same scheme as _draw_infill_axis), color = mean normalized |DLIG|. Scales
+    to many target_steps without the grid blowing up in height (32 steps at
+    cols=3 there is an 11-row, ~30in-tall figure).
+
+    Pools every group present per step (e.g. high/low ROUGE, or 'all') into
+    ONE population -- the paper found no discernible quality-split difference
+    in this profile (Figure 5b: 'a property of the task... not of a good
+    infill'), so preserving that split here would just be adding a dimension
+    that carries no signal.
+    """
+    if not by_step:
+        print("[ABORT] no data.")
+        return
+    steps = sorted(by_step.keys())
+    if not steps:
+        print("[ABORT] no steps.")
+        return
+
+    # pool every group (all / high / low, whichever are present) per step
+    pooled_by_step = {}
+    all_dists = set()
+    for step in steps:
+        merged = defaultdict(list)
+        for agg in by_step[step].values():
+            for d, vals in agg.items():
+                merged[d].extend(vals)
+        pooled_by_step[step] = merged
+        all_dists.update(merged.keys())
+
+    if not all_dists:
+        print("[ABORT] no distances.")
+        return
+    md = max_abs_dist if max_abs_dist is not None else max(abs(min(all_dists)), abs(max(all_dists)))
+    edges = list(range(-((md // bin_width) * bin_width), md + 1, bin_width))
+
+    # grid[bin, step]: distance bins on rows (-> y-axis), steps on cols (-> x-axis)
+    grid = np.full((len(edges), len(steps)), np.nan)
+    for si, step in enumerate(steps):
+        merged = pooled_by_step[step]
+        for bi, edge in enumerate(edges):
+            vals = []
+            for d in range(edge, edge + bin_width):
+                vals.extend(merged.get(d, []))
+            if len(vals) >= min_count:
+                grid[bi, si] = np.mean(vals)
+
+    cmap = plt.get_cmap(cmap_name).copy()
+    cmap.set_bad(color="0.92")   # below-min_count cells
+    fig, ax = plt.subplots(figsize=(max(6.0, 0.28 * len(steps) + 1.5), 4.6))
+    im = ax.imshow(grid, aspect="auto", cmap=cmap, origin="lower",
+                   extent=[-0.5, len(steps) - 0.5, edges[0], edges[-1] + bin_width])
+    ax.set_xticks(range(len(steps)))
+    ax.set_xticklabels([str(s) for s in steps], fontsize=8, rotation=90)
+    ax.set_xlabel("Denoising step $t$")
+    # Shorter label + smaller fontsize than the rcParams default (16): at the
+    # full "Signed distance from span (tokens)" wording and default size,
+    # this rotated (bottom-to-top) label is taller than the figure and runs
+    # off the top edge.
+    ax.set_ylabel("Distance from span (tokens)", fontsize=13)
+    ax.axhline(0, color="black", linewidth=1, linestyle=":")
+    ax.text(1.01, 0.02, r"$\leftarrow$ left", transform=ax.transAxes, fontsize=11,
+           rotation=90, va="bottom", ha="left")
+    ax.text(1.01, 0.62, r"right $\rightarrow$", transform=ax.transAxes, fontsize=11,
+           rotation=90, va="bottom", ha="left")
+    cbar = fig.colorbar(im, ax=ax, pad=0.06)
+    cbar.set_label("Normalized |DLIG|")
+    # bbox_inches="tight" trims to actual content -- safe now that the ylabel
+    # fits within the figure height (the earlier clipping was the label
+    # itself being taller than the figure at the old wording/fontsize, not a
+    # bbox-calculation problem; fixed margins just masked it with wasted
+    # whitespace instead of properly fixing it).
+    plt.savefig(output_file, dpi=300, bbox_inches="tight", pad_inches=0.05)
+    plt.close(fig)
+    print(f"[SUCCESS] infill trajectory heatmap ({len(steps)} steps x "
+          f"{len(edges)} bins) -> {output_file}")
+
+
 def plot_scalar_scatter(per_story, field, ylabel, output_file,
                         step=None, href=None, logy=False):
     """Per-story <field> vs ROUGE-1 scatter with binned trend. No in-figure
@@ -547,7 +629,20 @@ def main():
     parser.add_argument("--profile", action="store_true",
                         help="emit the signed-distance profile figure (small-multiples "
                              "grid). Off by default so scatter-only runs don't "
-                             "regenerate it as a side effect.")
+                             "regenerate it as a side effect. With many "
+                             "target_steps (e.g. 32) this grid gets very tall "
+                             "-- consider --heatmap instead, or pass "
+                             "--panel_steps to restrict it to a handful.")
+    parser.add_argument("--heatmap", action="store_true",
+                        help="emit a single-panel heatmap (step x signed "
+                             "distance, color = mean normalized |DLIG|) "
+                             "instead of plot_infill's small-multiples grid. "
+                             "Pools any ROUGE-quality groups per step into "
+                             "one population (Figure 5b found no discernible "
+                             "quality-split difference in this profile, so "
+                             "the split isn't worth the extra dimension). "
+                             "Scales to many target_steps without the grid's "
+                             "height blowup.")
     parser.add_argument("--empty_report", action="store_true",
                         help="print per-step surviving/dropped cell counts (the "
                              "F_t==0 cells aggregate_infill skips) plus the "
@@ -616,6 +711,16 @@ def main():
             cmap_name="Purples" if args.family.lower() == "diffugpt" else "Teals",
             max_abs_dist=args.max_dist, bin_width=args.bin_width,
             min_count=args.min_count, panel_steps=args.panel_steps,
+        )
+
+    if args.heatmap:
+        heatmap_out = output_plot[:-4] + "_heatmap.png"
+        plot_infill_heatmap(
+            by_step,
+            heatmap_out,
+            cmap_name="Purples" if args.family.lower() == "diffugpt" else "Teals",
+            max_abs_dist=args.max_dist, bin_width=args.bin_width,
+            min_count=args.min_count,
         )
 
     if args.ratio_r:

@@ -1,0 +1,57 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Full statistical results for the ROCStories infilling attribution analysis (§~\ref{sec:infill}), self-generated target mode. $n{=}1000$ stories, median-split on ROUGE-1 at $0.20$ (low $n{=}475$, high $n{=}525$). AUC is high-vs-low ROUGE attribution mass (chance $0.5$). $T{=}64$ denoising steps, target steps $t{\in}\{1,3,5,\dots,63\}$ (32 points). Gold-target mode is not included here pending a rerun under the current pipeline. Significance: $^{*}p{<}0.05$, $^{**}p{<}0.01$, $^{***}p{<}0.001$.}
+\label{tab:infill-stats}
+\begin{tabularx}{\linewidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.30\linewidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedleft\arraybackslash}p{0.20\linewidth}
+    @{}
+}
+\toprule
+\textit{Analysis} & \textit{Statistic} & \textit{Value} \\
+\midrule
+\multirow[t]{2}{=}{ROUGE-1 distribution (self-generated span vs.\ gold)}
+& Mean / median
+& $0.212$ / $0.200$ \\
+& Range
+& $[0.000,\ 0.833]$ \\
+\midrule
+\multirow[t]{8}{=}{Self-target attribution mildly, but significantly, tracks output quality when pooled}
+& Ratio(right/left) vs.\ ROUGE: Pearson $r$ ($n{=}28514$)
+& $0.027$ \\
+& Mean attribution ratio (right/left)
+& $0.984$ \\
+& Total-mass AUC (pooled, high vs.\ low ROUGE)
+& $0.510\;[0.503,0.517]$ \\
+& Total-mass $p$
+& $3.4{\times}10^{-3}\;^{**}$ \\
+& Per-step AUC: $t{=}1,17,33,49,63$
+& $0.501,\,0.517,\,0.533,$\newline $0.507,\,0.486$ \\
+& Per-step AUC range across all 32 steps
+& $[0.485,\ 0.533]$ \\
+& Per-step significance: all $t$ individually
+& $p>0.07$\ \ (n.s.\ at every step) \\
+& Interpretation
+& pooled effect real but small; no single step reaches significance alone (pseudo-replication) \\
+\midrule
+\multirow[t]{4}{=}{Attribution is left-skewed (paired, pooled over stories $\times$ steps)}
+& Mean left mass / mean right mass ($n{=}28514$ story-step cells)
+& $34.18$ / $32.47$ \\
+& Paired Wilcoxon $p$ (left vs.\ right)
+& $1.9{\times}10^{-204}\;^{***}$ \\
+& Fraction of cells left $>$ right / left $<$ right
+& $57.8\%$ / $42.2\%$ \\
+& Interpretation
+& consistent, highly significant left lean; effect size modest, not a dominant asymmetry \\
+\midrule
+\multirow[t]{2}{=}{Reliance strengthens late in denoising (not a monotonic fade)}
+& Mean total mass, $t{=}39$ (first step at full $n{=}1000$) vs.\ $t{=}63$
+& $59.36$ / $63.85$ \\
+& Full per-step trend
+& see Table~\ref{tab:infill-stepwise-mass} \\
+\bottomrule
+\end{tabularx}
+\end{table}

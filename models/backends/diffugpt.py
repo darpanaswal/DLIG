@@ -238,7 +238,7 @@ class DiffuGPTBackend(ModelBackend):
             sync + host transfer) that every downstream DLIG attribution
             experiment needs (it stores the trajectory for later scoring), but
             a bare accuracy eval that only wants the final x0 should not pay
-            it -- this is what made scripts/eval_task.py much slower than the
+            it -- this is what made helpers/eval_task.py much slower than the
             official generate_samples, which never leaves the GPU mid-loop.
 
         Algorithm (unchanged):

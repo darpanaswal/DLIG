@@ -1,0 +1,77 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Full statistical results for the multi-hop graph reasoning analyses on ProsQA (§~\ref{sec:prosqa}). Groups: \emph{success} ($n{=}286$), \emph{fail} ($n{=}69$), from the bucket split under which this attribution run was generated (§ see note on ProsQA data provenance). AUC is success-vs-fail (chance $0.5$; ${<}0.5$ means larger on fails). Logistic coefficients are standardized. $T{=}64$ denoising steps, target steps $t{\in}\{1,7,13,19,25,31,37,43,49,54,60\}$. Significance: $^{*}p{<}0.05$, $^{**}p{<}0.01$, $^{***}p{<}0.001$.}
+\label{tab:prosqa-stats}
+\begin{tabularx}{\linewidth}{
+    @{}
+    >{\raggedright\arraybackslash}p{0.30\linewidth}
+    >{\raggedright\arraybackslash}X
+    >{\raggedleft\arraybackslash}p{0.20\linewidth}
+    @{}
+}
+\toprule
+\textit{Analysis} & \textit{Statistic} & \textit{Value} \\
+\midrule
+\multirow[t]{4}{=}{Attribution concentrates on the gold path (successes, pooled)}
+& Precision $-$ chance
+& $+0.150$ \\
+& Wilcoxon $p$
+& $<10^{-15}\;^{***}$ \\
+& Random-edge null: mean
+& $-0.020$ \\
+& Random-edge null: 95th percentile
+& $+0.075$ \\
+\midrule
+\multirow[t]{6}{=}{Faithfulness on fails: mass tracks the model's cited chain}
+& Cited chain vs.\ other facts: per-token gap ($n{=}66$)
+& $+4.77$ \\
+& Cited chain vs.\ other facts: Wilcoxon $p$
+& $3.5{\times}10^{-6}\;^{***}$ \\
+& Gold vs.\ other facts (success mirror): per-token gap ($n{=}286$)
+& $+3.50$ \\
+& Gold vs.\ other facts (success mirror): Wilcoxon $p$
+& $<10^{-15}\;^{***}$ \\
+& Divergent-token subset: chain vs.\ gold ($n{=}42$)
+& $-1.46$ \\
+& Divergent-token subset: paired Wilcoxon $p$
+& $0.52$\ \ (n.s.) \\
+\midrule
+\multirow[t]{12}{=}{Contrastive magnitude anti-predicts correctness}
+& Mean per-token $|d|$: success / fail
+& $3.55$ / $4.13$ \\
+& Mean per-token $|d|$: AUC / $p$
+& $0.440$ / $0.124$\ \ (n.s.) \\
+& Difficulty checks: Spearman$(|d|,k)$
+& $+0.06$\ \ (n.s.) \\
+& Difficulty checks: Spearman$(|d|,\text{size})$
+& $-0.33$ \\
+& Within-$k$ AUC: $k{=}2$ ($n{=}120{+}27$)
+& $0.365\;^{*}$ \\
+& Within-$k$ AUC: $k{=}3$ ($n{=}116{+}33$)
+& $0.472$\ \ (n.s.) \\
+& Within-$k$ AUC: $k{=}4$ ($n{=}45{+}8$)
+& $0.511$\ \ (n.s.) \\
+& Within-$k$ AUC: weighted average
+& $0.433$ \\
+& Logistic ($+\,k$, size): $\beta_{|d|}$ / $p$
+& $-0.203$ / $0.125$\ \ (n.s.) \\
+& Logistic ($+\,k$, size): $\beta_k$ / $p$
+& $+0.033$ / $0.81$\ \ (n.s.) \\
+& Logistic ($+\,k$, size): $\beta_{\text{size}}$ / $p$
+& $+0.044$ / $0.76$\ \ (n.s.) \\
+& Per-step AUC: $t{=}1,7,13,19,25,31,37,43,49,54,60$
+& $.435,.424^{*},.430,$\newline $.445,.439,.437,.432,$\newline $.416^{*},.421^{*},.419^{*},.419^{*}$ \\
+\midrule
+\multirow[t]{4}{=}{Attribution location is group-invariant}
+& Precision $-$ chance: success / fail
+& $+0.150$ / $+0.138$ \\
+& AUC / $p$
+& $0.524$ / $0.53$\ \ (n.s.) \\
+& Joint logistic: $\beta_{\text{prec}}$ / $p$
+& $+0.064$ / $0.64$\ \ (n.s.) \\
+& Joint logistic: $\beta_{|d|}$ / $p$
+& $-0.213$ / $0.089$\ \ (n.s.) \\
+\bottomrule
+\end{tabularx}
+\end{table}

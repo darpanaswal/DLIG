@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# scripts/verify_batching.py
+# helpers/verify_batching.py
 """
 Verifies that batched generation matches single-example generation on the
 ACTUAL trained checkpoint, for all three tasks with batching wired into their
 generation loops -- see experiments/wic/wic.py,
 experiments/prosqa/prosqa_contrastive_dlig.py, and
-experiments/infill/attribution_infill.py (via scripts/eval_task.py's
+experiments/infill/attribution_infill.py (via helpers/eval_task.py's
 build_infill_batch, which infill's own main loop also uses).
 
 This is the real-weights counterpart to the random-init mechanism test used
@@ -23,13 +23,13 @@ itself (embeddings + attention over the correct, unpadded context) is what
 must match.
 
 Usage:
-  python -m scripts.verify_batching --task wic \
+  python -m helpers.verify_batching --task wic \
       --model_path models/diffugpt-m-wic --data data/wic_test_raw.jsonl --n 6
 
-  python -m scripts.verify_batching --task prosqa \
+  python -m helpers.verify_batching --task prosqa \
       --model_path models/diffugpt-m-prosqa --data data/prosqa_test.json --n 6
 
-  python -m scripts.verify_batching --task infill \
+  python -m helpers.verify_batching --task infill \
       --model_path models/Diffugpt --data data/rocstories_test.jsonl --n 6
 """
 import json
@@ -45,7 +45,7 @@ from experiments.prosqa.prosqa_contrastive_dlig import (
     append_sep_token as prosqa_append_sep_token,
 )
 from experiments.infill.attribution_infill import infill_generate_trajectory, load_stories
-from scripts.eval_task import build_infill_batch
+from helpers.eval_task import build_infill_batch
 
 
 def build_examples(task, data_path, n):

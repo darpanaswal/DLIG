@@ -108,7 +108,7 @@ def infill_generate_trajectory(backend, x_full, span_slice, steps, record_hook=N
         need the trajectory (e.g. this file's own DLIG attribution loop below).
         Pass None (or omit) to skip the per-step .detach().to("cpu").clone()
         entirely -- a real cost (CUDA sync + host transfer) that a bare
-        generate-and-score caller (scripts/eval_task.py) doesn't need, since it
+        generate-and-score caller (helpers/eval_task.py) doesn't need, since it
         only wants the final x0.
     key_padding_mask/position_ids: see models/backends/diffugpt.py's
         forward_logits. None (default) reproduces the original single-example
@@ -223,7 +223,7 @@ def build_arg_parser():
                    help="Stories generated together per call to "
                         "infill_generate_trajectory (left|span|right|"
                         "trailing_pad layout; verified via "
-                        "scripts/verify_batching.py --task infill -- requires "
+                        "helpers/verify_batching.py --task infill -- requires "
                         "TF32 disabled, see model_manager.py). DLIG "
                         "attribution stays per-story; only generation is "
                         "batched. diffugpt only (--family dream ignores this). "
@@ -360,7 +360,7 @@ def main():
         # AND length vary per story, unlike wic/prosqa's shared prefix
         # layout -- generalized key_padding_mask/position_ids in
         # models/backends/diffugpt.py make this equivalent to generating each
-        # story alone, verified in scripts/verify_batching.py). ---
+        # story alone, verified in helpers/verify_batching.py). ---
         real_lens = [p["n_left"] + p["span_len"] + p["n_right"] for p in prepped]
         Smax = max(real_lens)
         B = len(prepped)

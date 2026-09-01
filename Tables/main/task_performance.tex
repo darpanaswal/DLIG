@@ -1,0 +1,26 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Task-level performance of DiffuGPT-M on WiC, ProsQA, and ROCStories infilling. WiC: accuracy on all $500$ test examples, split by gold label into same-sense (Yes, $n{=}250$) and different-sense (No, $n{=}250$). ProsQA: outcomes over $n{=}500$ test examples, bucketed into \emph{success} (exact-match correct $\cup$ conceptually correct), \emph{fail} (wrong option among the two offered), and \emph{off-manifold} (wrong subject or an invalid/unlisted concept). Infill: ROUGE-1/2/L (self-generated span vs.\ gold sentence) over $n{=}1000$ ROCStories cases. All intervals are $95\%$ bootstrapped confidence intervals ($1{,}000$ resamples), matching the convention used throughout the appendix statistical tables.}
+\label{tab:task-performance}
+\begin{tabular}{@{}llrl@{}}
+\toprule
+\textit{Task} & \textit{Outcome} & \textit{n} & \textit{\% [95\% CI]} \\
+\midrule
+\multirow[t]{3}{*}{WiC ($n{=}500$)}
+& Overall accuracy & 318 & $63.6\ [59.2,\ 67.8]$ \\
+& Same-sense (Yes) accuracy & 227 & $90.8\ [87.2,\ 94.4]$ \\
+& Different-sense (No) accuracy & 91 & $36.4\ [30.4,\ 42.0]$ \\
+\midrule
+\multirow[t]{3}{*}{ProsQA ($n{=}500$)}
+& Success (correct $\cup$ concept-only) & 275 & $55.0\ [51.0,\ 59.4]$ \\
+& Fail (wrong option) & 64 & $12.8\ [10.0,\ 15.8]$ \\
+& Off-manifold (wrong subject / invalid concept) & 161 & $32.2\ [28.2,\ 36.2]$ \\
+\midrule
+\multirow[t]{3}{*}{Infill ($n{=}1000$)}
+& ROUGE-1 & \multicolumn{2}{c}{$12.02\ [11.22,\ 12.77]$} \\
+& ROUGE-2 & \multicolumn{2}{c}{$1.22\ [0.93,\ 1.55]$} \\
+& ROUGE-L & \multicolumn{2}{c}{$11.19\ [10.46,\ 11.86]$} \\
+\bottomrule
+\end{tabular}
+\end{table}
