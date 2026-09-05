@@ -97,9 +97,9 @@ def main():
     print(f"[SUMMARY] max abs_err={max_abs:.3e} at (layer={layers[i_a]}, t={steps[j_a]})")
     print(f"[SUMMARY] max rel_err={max_rel:.3e} at (layer={layers[i_r]}, t={steps[j_r]})")
 
-    for grid, name, label, fmt in [
-        (rel_grid, "rel_err", "relative error", "{:.1e}"),
-        (abs_grid, "abs_err", "absolute error", "{:.1e}"),
+    for grid, name, label in [
+        (rel_grid, "rel_err", "relative error"),
+        (abs_grid, "abs_err", "absolute error"),
     ]:
         fig, ax = plt.subplots(figsize=(0.45 * len(steps) + 2, 0.35 * len(layers) + 1.5))
         im = ax.imshow(grid, aspect="auto", cmap="viridis")
@@ -109,7 +109,6 @@ def main():
         ax.set_yticklabels(layers, fontsize=7)
         ax.set_xlabel("denoising step $t$")
         ax.set_ylabel("layer $\\ell$")
-        ax.set_title(f"Completeness {label} at $m{{=}}{args.m}$ (max {fmt.format(np.nanmax(grid))})")
         cbar = fig.colorbar(im, ax=ax)
         cbar.set_label(label)
         fig.tight_layout()

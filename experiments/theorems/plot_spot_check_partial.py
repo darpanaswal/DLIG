@@ -61,7 +61,6 @@ def main():
     ax.set_xticklabels(layers)
     ax.set_xlabel("layer $\\ell$")
     ax.set_ylabel("rel. diff (partial-forward vs.\\ full-path)")
-    ax.set_title("Partial-forward spot check: per-layer exactness")
     ax.legend()
     fig.tight_layout()
 
