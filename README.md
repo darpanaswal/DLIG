@@ -10,7 +10,7 @@ pip install -r requirements.txt
 
 Set `HUGGINGFACE_API_KEY` in a `.env` file at the repo root if you need to pull checkpoints from the Hub (only `helpers/hf_transfer.py` requires it).
 
-All experiments finetune or evaluate **DiffuGPT-M** [Gong et al.], a masked-diffusion adaptation of GPT-2-medium (~355M params). Checkpoints (base + the WiC and ProsQA finetunes) are available on the Hugging Face page above; download and place them under `models/Diffugpt` (base), `models/diffugpt-m-wic`, and `models/diffugpt-m-prosqa` before running any experiment below. See also [Appendix C: Model, Datasets, and Training](#appendix-c-model-datasets-and-training).
+All experiments finetune or evaluate **DiffuGPT-M**, a masked-diffusion adaptation of GPT-2-medium (~355M params). Checkpoints (base + the WiC and ProsQA finetunes) are available on the Hugging Face page above; download and place them under `models/Diffugpt` (base), `models/diffugpt-m-wic`, and `models/diffugpt-m-prosqa` before running any experiment below. See also [Appendix C: Model, Datasets, and Training](#appendix-c-model-datasets-and-training).
 
 ```bash
 python -m helpers.hf_transfer download \
@@ -276,7 +276,7 @@ Full Mann–Whitney AUC, Wilcoxon signed-rank, dip-test, and bootstrap-CI statis
 
 ## Appendix C: Model, Datasets, and Training
 
-All three tasks finetune or evaluate DiffuGPT-M [Gong et al.], a masked-diffusion adaptation of GPT-2-medium (~355M params). WiC uses a 4,928/638/500 train/val/test split (test carved from the official train set, since WiC test labels are private); ProsQA uses the standard 17,886/300/500 split; ROCStories infilling evaluates over 1,000 held-out stories on the base (non-finetuned) checkpoint. Fine-tuning hyperparameters and prompt formats are listed in the paper (Appendix C, Tables 11–13). Download checkpoints from the [Hugging Face page](https://hf.co/darpanaswal/DLIG) or finetune your own with the DiffuLLaMA/DiffuGPT recipe [Gong et al.], and place them under `models/Diffugpt`, `models/diffugpt-m-wic`, and `models/diffugpt-m-prosqa` (see `utils/config.py` for exact paths) before running any experiment above.
+All three tasks finetune or evaluate DiffuGPT-M, a masked-diffusion adaptation of GPT-2-medium (~355M params). WiC uses a 4,928/638/500 train/val/test split (test carved from the official train set, since WiC test labels are private); ProsQA uses the standard 17,886/300/500 split; ROCStories infilling evaluates over 1,000 held-out stories on the base (non-finetuned) checkpoint. Fine-tuning hyperparameters and prompt formats are listed in the paper (Appendix C, Tables 11–13). Download checkpoints from the [Hugging Face page](https://huggingface.co/darpanaswal/DLIG), or finetune your own with [our fork of the DiffuGPT repo](https://github.com/darpanaswal/diffugpt), which provides the exact scripts we used to train these models. Place checkpoints under `models/Diffugpt`, `models/diffugpt-m-wic`, and `models/diffugpt-m-prosqa` (see `utils/config.py` for exact paths) before running any experiment above.
 
 ---
 
