@@ -1,6 +1,6 @@
 # Diffusion Layer Integrated Gradients (DLIG)
 
-Code to reproduce the experiments in *Temporally-Resolved Token Attribution Reveals the Generation Dynamics of Diffusion Language Models*. [Paper (arXiv)](https://arxiv.org/abs/XXXX.XXXXX) · [Models (Hugging Face)](https://hf.co/darpanaswal/DLIG)
+Code to reproduce the experiments in *Temporally-Resolved Token Attribution Reveals the Generation Dynamics of Diffusion Language Models*. [Paper (arXiv)](https://arxiv.org/abs/XXXX.XXXXX) · [Models (Hugging Face)](https://huggingface.co/collections/darpanaswal/dlig)
 
 ## Setup
 
