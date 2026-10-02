@@ -1,6 +1,6 @@
 # Diffusion Layer Integrated Gradients (DLIG)
 
-Code to reproduce the experiments in *Temporally-Resolved Token Attribution Reveals the Generation Dynamics of Diffusion Language Models*. [Paper (arXiv)](https://arxiv.org/abs/XXXX.XXXXX) · [Models (Hugging Face)](https://huggingface.co/collections/darpanaswal/dlig)
+Code to reproduce the experiments in *Temporally-Resolved Token Attribution Reveals the Generation Dynamics of Diffusion Language Models*. [Paper (arXiv)](https://arxiv.org/abs/2610.01177) · [Models (Hugging Face)](https://huggingface.co/collections/darpanaswal/dlig)
 
 ## Setup
 
@@ -283,10 +283,13 @@ All three tasks finetune or evaluate DiffuGPT-M, a masked-diffusion adaptation o
 ## Citation
 
 ```bibtex
-@article{aswal2026temporally,
-  title={Temporally-Resolved Token Attribution Reveals the Generation Dynamics of Diffusion Language Models},
-  author={Aswal, Darpan and Hudelot, C{\'e}line},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2026}
+@misc{aswal2026temporallyresolvedtokenattributionreveals,
+      title={Temporally-Resolved Token Attribution Reveals the Generation Dynamics of Diffusion Language Models}, 
+      author={Darpan Aswal and Céline Hudelot},
+      year={2026},
+      eprint={2610.01177},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2610.01177}, 
 }
 ```
